@@ -24,6 +24,7 @@
           markdown
           pygments
 	  leanblueprint
+	  plasTeX
         ]);
 
         # Lean 4 from the input
