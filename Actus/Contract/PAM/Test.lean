@@ -94,7 +94,7 @@ def step₁ : Step pam s₀ s₁ :=
 
     `stf_MD` requires `s.name = "test"` — `rfl`.
     `t` is unified to `1` from the definition of `s₂`. -/
-def step₂ : Step pam s₁ s₂ :=
+def step₂ : s₁ -[ pam ]↝ s₂ :=
   Step.stf_MD (t := 1) rfl
 
 /-- **trace**: full execution path `s₀ ↠ s₂`. -/

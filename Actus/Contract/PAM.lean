@@ -119,6 +119,10 @@ inductive Step (ct : Terms) : State → State → Type where
       s.name = "test" →
       Step ct s { s with statusDate := t }
 
+
+-- TODO: ct implicit?
+notation s "-[" ct "]↝" s' => Step ct s s'
+
 -- ---------------------------------------------------------------------------
 -- Closures
 -- ---------------------------------------------------------------------------
