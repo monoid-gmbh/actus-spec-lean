@@ -1,0 +1,36 @@
+# Lean build artifacts
+/.lake
+/build
+*.olean
+*.trace
+
+# Python virtual environment
+/.venv
+__pycache__/
+*.pyc
+*.pyo
+
+# Blueprint generated files
+/blueprint/web/
+/blueprint/print/
+
+# Nix build artifacts
+/result
+/result-*
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.log
+*.aux
+*.out
+*.toc
+*.bbl
+*.blg
