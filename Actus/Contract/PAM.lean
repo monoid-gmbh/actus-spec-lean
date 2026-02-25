@@ -73,7 +73,7 @@ def PAM_contract : ActusContract :=
 -- ---------------------------------------------------------------------------
 
 /-- One-step state-transition relation for PAM contracts. -/
-inductive Step (ct : Terms) : State → State → Type where
+inductive Step {ct: Terms}: State → State → Type where
 
   /-- **IED** — Initial Exchange Date.
       Requires `s.name = "test"` and `ct.nominalInterest = some ipnr`.
@@ -83,7 +83,7 @@ inductive Step (ct : Terms) : State → State → Type where
       ∀ {s : State} {t : Time} {ipnr : Float},
       s.name = "test" →
       ct.nominalInterest = some ipnr →
-      Step ct s
+      Step s
         { s with
           statusDate        := t
           nominalInterest   := ipnr
@@ -94,7 +94,7 @@ inductive Step (ct : Terms) : State → State → Type where
   | stf_IP1 :
       ∀ {s : State} {t : Time},
       ct.feeBasis = FeeBasis.FEB_N →
-      Step ct s
+      Step s
         { s with
           statusDate      := t
           accruedInterest := 0.0
@@ -106,7 +106,7 @@ inductive Step (ct : Terms) : State → State → Type where
   | stf_IP2 :
       ∀ {s : State} {t : Time},
       ct.feeBasis ≠ FeeBasis.FEB_N →
-      Step ct s
+      Step s
         { s with
           statusDate      := t
           accruedInterest := 0.0
@@ -117,18 +117,18 @@ inductive Step (ct : Terms) : State → State → Type where
   | stf_MD :
       ∀ {s : State} {t : Time},
       s.name = "test" →
-      Step ct s { s with statusDate := t }
+      Step s { s with statusDate := t }
 
 
 -- TODO: ct implicit?
-notation s "-[" ct "]↝" s' => Step ct s s'
+notation s "↝" s' => Step s s'
 
 -- ---------------------------------------------------------------------------
 -- Closures
 -- ---------------------------------------------------------------------------
 
 /-- Execution trace: zero-or-more PAM steps from `s` to `s'`. -/
-abbrev Trace (ct : Terms) := Star (Step ct)
+abbrev Trace {ct: Terms}:= Star (Step (ct := ct))
 
 -- ---------------------------------------------------------------------------
 -- Initial state
@@ -154,7 +154,7 @@ def s₀ : State :=
 
     Note: `stf_IED` always returns `((0, IED), 0.0)` — this matches the Agda
     source, which hardcodes this for the zero-valued test contract. -/
-def getCashflow (ct : Terms) {s s' : State} (h : Step ct s s') (rf : RiskFactor) : Cashflow :=
+def getCashflow (ct : Terms) {s s' : State} (h : Step (ct := ct) s s') (rf : RiskFactor) : Cashflow :=
   match h with
   | .stf_IED _ _  => ((0, EventType.IED), 0.0)
   | @Step.stf_IP1 _ s _ _ =>
@@ -172,7 +172,7 @@ def getCashflow (ct : Terms) {s s' : State} (h : Step ct s s') (rf : RiskFactor)
 
 /-- Collect cashflows along a full execution trace. -/
 def getCashflows (ct : Terms) (rf : RiskFactor) :
-    ∀ {s s' : State}, Trace ct s s' → Cashflows
+    ∀ {s s' : State}, Trace (ct := ct) s s' → Cashflows
   | _, _, .refl        => []
   | _, _, .step h rest => getCashflow ct h rf :: getCashflows ct rf rest
 
@@ -183,7 +183,7 @@ def getCashflows (ct : Terms) (rf : RiskFactor) :
 /-- Witness that the PAM spec satisfies `StateTransition`. -/
 def PAM_impl (ct : Terms) : StateTransition PAM_contract :=
   { s₀          := s₀
-    rel          := Step ct
+    rel          := Step (ct := ct)
     getCashflow  := fun h rf => getCashflow ct h rf }
 
 end Actus.Contract.PAM

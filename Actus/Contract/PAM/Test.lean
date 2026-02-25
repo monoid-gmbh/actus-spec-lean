@@ -87,18 +87,18 @@ def s₂ : State :=
 
     The result state is *defined* to be `s₁`, so unification succeeds with no
     Float arithmetic in the kernel. -/
-def step₁ : Step pam s₀ s₁ :=
+def step₁ : Step (ct := pam) s₀ s₁ := -- TODO: def step₁ : s₀ ↝ s₁ := ...
   Step.stf_IED (t := 0) (ipnr := 0.0) rfl rfl
 
 /-- **step₂**: MD transition from `s₁` to `s₂`.
 
     `stf_MD` requires `s.name = "test"` — `rfl`.
     `t` is unified to `1` from the definition of `s₂`. -/
-def step₂ : s₁ -[ pam ]↝ s₂ :=
+def step₂ : Step (ct := pam) s₁ s₂ := -- TODO: def step₂ : s₁ ↝ s₂ := ...
   Step.stf_MD (t := 1) rfl
 
 /-- **trace**: full execution path `s₀ ↠ s₂`. -/
-def trace : Trace pam s₀ s₂ :=
+def trace : Trace (ct := pam) s₀ s₂ :=
   Star.step step₁ (Star.step step₂ Star.refl)
 
 -- ---------------------------------------------------------------------------
