@@ -390,14 +390,18 @@ inductive EventType where
   | PI   -- Premium payment
   deriving Repr, DecidableEq
 
-/-- Priority for event ordering (lower number = higher priority). -/
+/-- Priority for intra-timestamp event ordering (lower = processed first).
+    Order derived from the ACTUS reference event sequences: in particular
+    `PR < IP`, `IP` before rate resets / scaling / `IPCB`, and interest (`IP`)
+    before contract-closing events (`PRD`, `TD`, `MD`) so it accrues on the full
+    notional before the contract is purchased/terminated/matured. -/
 def eventTypePriority : EventType → Nat
-  | .AD   => 0  | .IED  => 1  | .PR   => 2  | .PD   => 3
-  | .PRD  => 4  | .TD   => 5  | .IP   => 6  | .IPCI => 7
-  | .IPCB => 8  | .RR   => 9  | .RRF  => 10 | .DV   => 11
-  | .PRF  => 12 | .PY   => 13 | .PP   => 14 | .CD   => 15
-  | .FP   => 16 | .STD  => 17 | .MD   => 18 | .XD   => 19
-  | .SC   => 20 | .CE   => 21 | .PI   => 22
+  | .AD   => 0  | .IED  => 1  | .FP   => 2  | .PR   => 3
+  | .PD   => 4  | .IPCI => 5  | .IP   => 6  | .RRF  => 7
+  | .RR   => 8  | .IPCB => 9  | .SC   => 10 | .PRF  => 11
+  | .PY   => 12 | .PP   => 13 | .DV   => 14 | .CD   => 15
+  | .STD  => 16 | .PRD  => 17 | .TD   => 18 | .XD   => 19
+  | .MD   => 20 | .CE   => 21 | .PI   => 22
 
 /-- String representation of an event type. -/
 def eventTypeToString : EventType → String
@@ -409,25 +413,14 @@ def eventTypeToString : EventType → String
   | .SC   => "SC"  | .CE   => "CE"   | .PI   => "PI"
 
 -- ---------------------------------------------------------------------------
--- Year Fraction Convention
+-- Convention functions
 --
--- Y : s, t, DCC → ℝ
--- Actual DCC implementations are left as stubs (returning 0.0), faithfully
--- matching the Agda source which also leaves them unimplemented.
+-- The Year Fraction Convention `Y : s, t, DCC → ℝ` (§3.6) and the Contract Role
+-- Sign `R : CNTRL → {-1, +1}` (§3.7) are implemented in the utility layer:
+--   `Actus.Util.DayCount.yearFraction`  and  `Actus.Util.Conventions.sign`.
+-- They live there (not here) because they depend on the date arithmetic in
+-- `Actus.Util.Date`, which in turn imports this module.
 -- ---------------------------------------------------------------------------
-
-def yearFraction (_ : DayCountConvention) (_ _: LocalTime) (_ : Option LocalTime) : Float :=
-  0.0
-
--- ---------------------------------------------------------------------------
--- Contract Role Sign
---
--- R : CNTRL → {-1, +1}
--- Maps contract role to +1 (claim) or -1 (obligation).
--- The Agda source returns 1.0 for all roles as a placeholder.
--- ---------------------------------------------------------------------------
-
-def sign (_ : ContractRole) : Float := 1.0
 
 -- ---------------------------------------------------------------------------
 -- Risk Factor

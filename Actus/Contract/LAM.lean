@@ -1,0 +1,153 @@
+/-
+## LAM — Linear Amortizer  (§7.2)
+
+Principal is paid out at `IED` and paid back in fixed instalments `Prnxt` on a
+principal-redemption (`PR`) cycle.  LAM is defined in §7.2 almost entirely as
+deltas over PAM: most STFs are `STF_X_PAM()` and most POFs `POF_X_PAM()`.
+
+The genuinely LAM-specific pieces are:
+
+* a **PR** event (linear principal redemption) and an **IPCB** event (interest
+  calculation base fixing);
+* interest accrual on the *interest calculation base* `Ipcb` rather than `Nt`
+  for the redemption/capitalization events;
+* `Md`/`Prnxt`/`Ipcb` initialization.
+
+Events whose accrual base is `Nt` reuse the PAM STF/POF directly (valid in the
+common `IPCB = 'NT'` case where `Ipcb` tracks `Nt`).
+-/
+
+import Actus.Protocol
+import Actus.Abstract
+import Actus.Closures
+import Actus.Contract.Lending.Common
+import Actus.Contract.PAM
+import Actus.Util.Conventions
+
+namespace Actus.Contract.LAM
+
+open Actus.Protocol
+open Actus.Abstract
+open Actus.Closures
+open Actus.Contract.Lending
+open Actus.Util.Conventions (sign)
+
+abbrev Terms := Lending.Terms
+abbrev State := Lending.State
+
+/-- Interest-calculation-base value: tracks `Nt` when `IPCB = 'NT'` (or absent),
+    otherwise the fixed `R(CNTRL)·IPCBA`. -/
+def lamIpcb (ct : Terms) (nt : Float) : Float :=
+  match ct.interestCalculationBase with
+  | some .IPCB_NT => nt
+  | none          => nt
+  | some _        => sign (Terms.cntrl ct) * Terms.ipcba ct
+
+/-- Interest accrual on the interest calculation base `Ipcb`. -/
+def ipacAccrIpcb (ct : Terms) (t : Time) (s : State) : Float :=
+  s.ipac + yf ct s.sd t * s.ipnr * s.ipcb
+
+-- ---------------------------------------------------------------------------
+-- LAM-specific STFs
+-- ---------------------------------------------------------------------------
+
+def stf_IED (ct : Terms) (t : Time) (s : State) : State :=
+  let b := PAM.stf_IED ct t s
+  { b with ipcb := lamIpcb ct b.nt }
+
+/-- The actual principal redeemed: the instalment `Prnxt`, but capped at the
+    remaining notional so a redemption never overshoots `0` (the final
+    instalment is partial; once `Nt = 0` it pays nothing).  `Prnxt` and `Nt`
+    share the contract-role sign. -/
+def redeemed (nt prnxt : Float) : Float :=
+  if Float.abs prnxt ≥ Float.abs nt then nt else prnxt
+
+/-- Principal redemption: pay back `Prnxt` (capped at the remaining notional),
+    accruing interest on `Ipcb`.  `Prnxt` already carries the contract-role sign
+    (set in `lamInit`/`init`). -/
+def stf_PR (ct : Terms) (t : Time) (s : State) : State :=
+  let nt' := s.nt - redeemed s.nt s.prnxt
+  { s with ipac := ipacAccrIpcb ct t s
+           feac := PAM.feacNext ct t s
+           nt   := nt'
+           ipcb := match ct.interestCalculationBase with
+                   | some .IPCB_NT => nt'
+                   | none          => nt'
+                   | some _        => s.ipcb
+           sd   := t }
+
+def stf_IPCB (_ct : Terms) (t : Time) (s : State) : State :=
+  { s with ipcb := s.nt, sd := t }
+
+def stf_IPCI (ct : Terms) (t : Time) (s : State) : State :=
+  let nt' := s.nt + ipacAccrIpcb ct t s
+  { s with nt := nt', ipac := 0.0, feac := PAM.feacNext ct t s
+           ipcb := match ct.interestCalculationBase with
+                   | some .IPCB_NT => nt'
+                   | none          => nt'
+                   | some _        => s.ipcb
+           sd := t }
+
+/-- STF dispatcher: LAM-specific events plus PAM delegation. -/
+def stf (ct : Terms) (rf : RiskFactorEnv) (ev : EventType) (t : Time) (s : State) : State :=
+  match ev with
+  | .IED  => stf_IED ct t s
+  | .PR   => stf_PR ct t s
+  | .IPCB => stf_IPCB ct t s
+  | .IPCI => stf_IPCI ct t s
+  | _     => PAM.stf ct rf ev t s
+
+-- ---------------------------------------------------------------------------
+-- LAM-specific POF
+-- ---------------------------------------------------------------------------
+
+def pof_PR (rf : RiskFactorEnv) (t : Time) (s : State) : Payoff :=
+  rf.curs t * s.nsc * redeemed s.nt s.prnxt
+
+def pof (ct : Terms) (rf : RiskFactorEnv) (ev : EventType) (t : Time) (s : State) : Payoff :=
+  match ev with
+  | .PR => pof_PR rf t s
+  | _   => PAM.pof ct rf ev t s
+
+-- ---------------------------------------------------------------------------
+-- Initialization at t₀  (§7.2)
+-- ---------------------------------------------------------------------------
+
+/-- Initial state.  `Prnxt` defaults to the term `PRNXT`, falling back to the
+    full notional when absent (the annuity-style fallback needs the redemption
+    schedule, omitted here). -/
+def init (ct : Terms) (md t₀ : Time) : State :=
+  let b := PAM.init ct md t₀
+  { b with
+    prnxt := if ct.nextPrincipalRedemptionPayment.isSome then Terms.prnxt ct else Terms.nt ct
+    ipcb  := if t₀ < md then lamIpcb ct b.nt else 0.0 }
+
+-- ---------------------------------------------------------------------------
+-- Relational model
+-- ---------------------------------------------------------------------------
+
+/-- One-step LAM transition.  Constructors target the LAM dispatcher `stf`. -/
+inductive Step (ct : Terms) (rf : RiskFactorEnv) : State → State → Type where
+  | ev : ∀ {s : State} (e : EventType) {t : Time}, s.sd ≤ t →
+         Step ct rf s (stf ct rf e t s)
+
+abbrev Trace (ct : Terms) (rf : RiskFactorEnv) := Star (Step ct rf)
+
+def getCashflow (ct : Terms) (rf : RiskFactorEnv) {s s' : State}
+    (h : Step ct rf s s') : Cashflow :=
+  match h with
+  | .ev e _ => ((s'.sd, e), pof ct rf e s'.sd s)
+
+def getCashflows (ct : Terms) (rf : RiskFactorEnv) :
+    ∀ {s s' : State}, Trace ct rf s s' → Cashflows
+  | _, _, .refl        => []
+  | _, _, .step h rest => getCashflow ct rf h :: getCashflows ct rf rest
+
+def LAM_contract : ActusContract := { Terms := Terms, State := State }
+
+def LAM_impl (ct : Terms) (rf : RiskFactorEnv) (s₀ : State) :
+    StateTransition LAM_contract :=
+  { s₀ := s₀, rel := Step ct rf
+    getCashflow := fun h r => let _ := r; getCashflow ct rf h }
+
+end Actus.Contract.LAM

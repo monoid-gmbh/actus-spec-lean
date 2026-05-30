@@ -15,3 +15,7 @@ rev = "main"
 
 [[lean_lib]]
 name = "Actus"
+
+[[lean_exe]]
+name = "conformance"
+root = "Actus.IO.Conformance"

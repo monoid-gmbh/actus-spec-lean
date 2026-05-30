@@ -1,11 +1,14 @@
 /-
-## ACTUS Contract Execution
+## ACTUS Contract Execution (generic engine)
 
-Parameterised by a concrete `ActusContract` and its `StateTransition`.
-Schedule and cashflow generation are stubs (`sorry`), faithfully reflecting
-the `{!!}` holes in the Agda source.
+The executable side of the spec: given a *functional* state-transition function
+and payoff function (the `stf`/`pof` dispatchers each contract provides) and an
+event `Schedule`, `runSchedule` threads the state through the events in order
+and collects the resulting `Cashflows`.
 
-Translated from `Actus/Execution.lagda.md` (Agda) to Lean 4.
+This replaces the previous `sorry` stubs.  Contract-specific *schedule
+generation* (which events fire, and when) lives next to each contract family;
+for the lending family see `Actus.Contract.Lending.Execution`.
 -/
 
 import Actus.Protocol
@@ -14,16 +17,24 @@ import Actus.Abstract
 namespace Actus.Execution
 
 open Actus.Protocol
-open Actus.Abstract
 
-variable (c : ActusContract) (st : StateTransition c)
+/-- Fold a functional STF/POF over an event schedule.
 
-/-- Generate the event schedule from contract terms.
-    Implementation is intentionally left as a `sorry` (stub). -/
-def genSchedule (_ : c.Terms) : Schedule := by exact sorry
+    For each scheduled event `(t, e)` the payoff is computed from the *current*
+    (pre-event) state, then the state is advanced by the STF. -/
+def runSchedule {State : Type}
+    (stf : EventType → Time → State → State)
+    (pof : EventType → Time → State → Payoff)
+    (s₀ : State) (sched : Schedule) : Cashflows :=
+  let rec go (s : State) : Schedule → Cashflows
+    | []            => []
+    | (t, e) :: rest => ((t, e), pof e t s) :: go (stf e t s) rest
+  go s₀ sched
 
-/-- Generate the cashflow stream from contract terms.
-    Implementation is intentionally left as a `sorry` (stub). -/
-def genCashflows (_ : c.Terms) : Cashflows := by exact sorry
+/-- Final state after running the whole schedule from `s₀`. -/
+def finalState {State : Type}
+    (stf : EventType → Time → State → State)
+    (s₀ : State) (sched : Schedule) : State :=
+  sched.foldl (fun s (te : Event) => stf te.2 te.1 s) s₀
 
 end Actus.Execution

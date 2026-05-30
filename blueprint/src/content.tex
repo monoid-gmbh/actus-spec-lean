@@ -8,9 +8,97 @@
 
 \section{Overview}
 
+This blueprint documents the Lean~4 formalization of the ACTUS technical
+specification, covering the core lending family of contract types
+(PAM, LAM, NAM, ANN).  Each contract is modeled twice: relationally (the
+inductive \texttt{Step}, the readable spec) and functionally (computable
+state-transition and payoff functions), with the two proven to agree.
 
-\begin{definition}[\texttt{yearFraction}]\label{yearFraction}
-        \lean{Actus.Protocol.yearFraction}
+\section{Utility layer}
+
+\begin{definition}[Contract Role Sign $R$]\label{def:sign}
+        \lean{Actus.Util.Conventions.sign}
         \leanok
-        The expression $\sum_{k=1}^n k v^k$.
+        The contract-role sign $R : \mathtt{CNTRL} \to \{-1, +1\}$ (\S3.7),
+        mapping a role to $+1$ for a claim (asset) or $-1$ for an obligation.
 \end{definition}
+
+\begin{definition}[Year Fraction $Y$]\label{def:yearFraction}
+        \lean{Actus.Util.DayCount.yearFraction}
+        \leanok
+        The year-fraction convention $Y : s, t, \mathtt{DCC} \to \mathbb{R}$
+        (\S3.6), giving the fraction of a year between two dates under a
+        day-count convention (Actual/360, Actual/365, 30E/360, Actual/Actual
+        ISDA, Business/252).
+\end{definition}
+
+\begin{definition}[Schedule function $S$]\label{def:schedule}
+        \lean{Actus.Util.Schedule.schedule}
+        \uses{def:sign, def:yearFraction}
+        \leanok
+        The schedule function $S(s, c, T, B)$ (\S3.1): the cyclic event times
+        from anchor $s$ with cycle $c$ up to end date $T$, with end-of-month and
+        business-day conventions applied.
+\end{definition}
+
+\begin{definition}[Annuity Amount $A$]\label{def:annuity}
+        \lean{Actus.Util.Schedule.annuity}
+        \uses{def:yearFraction}
+        \leanok
+        The annuity amount $A(s,T,n,a,r)$ (\S3.8) sizing the constant ANN
+        instalment so the notional is fully repaid by maturity.
+\end{definition}
+
+\section{Contract types}
+
+\begin{definition}[PAM state transition]\label{def:pam-stf}
+        \lean{Actus.Contract.PAM.stf}
+        \uses{def:sign, def:yearFraction}
+        \leanok
+        The Principal-at-Maturity state-transition function (\S7.1): one branch
+        per event type (IED, IP, MD, RR, \dots).
+\end{definition}
+
+\begin{definition}[PAM relational step]\label{def:pam-step}
+        \lean{Actus.Contract.PAM.Step}
+        \uses{def:pam-stf}
+        \leanok
+        The relational one-step transition; each constructor's target is the
+        functional next-state \texttt{stf}.
+\end{definition}
+
+\begin{definition}[LAM / NAM / ANN]\label{def:amortizers}
+        \lean{Actus.Contract.LAM.stf}
+        \uses{def:pam-stf, def:annuity}
+        \leanok
+        The amortizing contracts, defined as deltas over PAM: a linear
+        principal redemption (LAM), interest-first redemption (NAM), and
+        constant-instalment annuity with rate-reset re-amortization (ANN).
+\end{definition}
+
+\section{Metatheorems}
+
+\begin{theorem}[Relational/functional agreement]\label{thm:agree}
+        \lean{Actus.Contract.Lending.Agree.pam_step_to_fun}
+        \uses{def:pam-step}
+        \leanok
+        Every relational PAM step lands on the functional next-state for some
+        event and time; conversely every admissible event/time yields a step.
+        The relation is exactly the graph of \texttt{stf}.
+\end{theorem}
+
+\begin{theorem}[Status-date monotonicity]\label{thm:mono}
+        \lean{Actus.Contract.Lending.Properties.pam_trace_mono}
+        \uses{thm:agree}
+        \leanok
+        Along any execution trace the status date is non-decreasing: each step
+        requires $\mathtt{Sd} \le t$ and sets $\mathtt{Sd} := t$.
+\end{theorem}
+
+\begin{theorem}[Maturity]\label{thm:maturity}
+        \lean{Actus.Contract.Lending.Properties.pam_md_nt}
+        \uses{def:pam-stf}
+        \leanok
+        The maturity event zeroes the notional principal (and accrued interest
+        and fees); termination additionally zeroes the interest rate.
+\end{theorem}
