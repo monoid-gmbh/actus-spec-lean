@@ -183,6 +183,11 @@ structure RiskFactorEnv where
   annuityYfs : Time → List Float := fun _ => []
   /-- Scaling index `Oʳᶠ(SCMO, t)` driving the `SC` scaling multipliers. -/
   scalingIndex : Time → Float := fun _ => 1.0
+  /-- Maturity / termination given as end-of-day (`23:59:59`): the event settles
+      and accrues to the *next* midnight while the schedule structure uses the
+      written date (§2.8). -/
+  maturityEOD    : Bool := false
+  terminationEOD : Bool := false
 
 /-- Trivial environment: unit fx factor, no market rate, no prepayment. -/
 def RiskFactorEnv.id : RiskFactorEnv := {}

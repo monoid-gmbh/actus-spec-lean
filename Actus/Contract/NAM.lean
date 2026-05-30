@@ -42,9 +42,8 @@ def stf_PR (ct : Terms) (t : Time) (s : State) : State :=
   { s with ipac := accr, feac := PAM.feacNext ct t s
            nt   := nt'
            ipcb := match ct.interestCalculationBase with
-                   | some .IPCB_NT => nt'
-                   | none          => nt'
-                   | some _        => s.ipcb
+                   | some .IPCB_NTL => s.ipcb   -- NTL: base fixed (stepped at IPCB)
+                   | _              => nt'      -- NT / NTIED / none track the notional
            sd   := t }
 
 def pof_PR (ct : Terms) (rf : RiskFactorEnv) (t : Time) (s : State) : Payoff :=

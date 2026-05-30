@@ -64,6 +64,16 @@ def parseDate (s : String) : Except String LocalTime :=
     | _, _, _ => .error s!"bad date '{s}'"
   | _ => .error s!"bad date '{s}'"
 
+/-- Is the timestamp end-of-day (`…T23:59:59`)? -/
+def isEndOfDay (s : String) : Bool :=
+  (((s.splitOn "T").drop 1).headD "").startsWith "23:59:59"
+
+/-- Like `parseDate`, but a `23:59:59` end-of-day timestamp rolls to the next
+    midnight (used for *event* dates so computed and expected events align). -/
+def parseDateRoll (s : String) : Except String LocalTime := do
+  let base ← parseDate s
+  pure (if isEndOfDay s then Actus.Util.Date.addDays base 1 else base)
+
 /-- ACTUS cycle string, e.g. `"P1ML1"` (period 1 Month, long stub) or the older
     `"1M-"` form, to `Cycle`.  The leading `P` and a trailing stub marker
     (`L0`/`L1`, or a `+`/`-` suffix) are both accepted; `L1` or `+` mark a long
@@ -314,8 +324,16 @@ def riskFactorsFromJson (j : Json) (ct : Terms) : Except String RiskFactorEnv :=
     match moc with
     | some m => ((series.find? (·.1 == m)).map (·.2)).getD []
     | none   => []
-  pure { marketRate   := stepLookup (lookup ct.marketObjectCodeOfRateReset)
-         scalingIndex := stepLookup (lookup ct.marketObjectCodeOfScalingIndex) }
+  -- detect the `23:59:59` end-of-day marker on the maturity/termination terms
+  let termsJ := (j.getObjVal? "terms").toOption
+  let eodOf := fun (k : String) =>
+    match termsJ.bind (fun t => (t.getObjVal? k).toOption) with
+    | some (.str s) => isEndOfDay s
+    | _             => false
+  pure { marketRate     := stepLookup (lookup ct.marketObjectCodeOfRateReset)
+         scalingIndex   := stepLookup (lookup ct.marketObjectCodeOfScalingIndex)
+         maturityEOD    := eodOf "maturityDate" || eodOf "amortizationDate"
+         terminationEOD := eodOf "terminationDate" }
 
 -- ---------------------------------------------------------------------------
 -- Test-case wrapper
@@ -338,7 +356,7 @@ structure TestCase where
 private def observedEventFromJson (j : Json) : Except String ObservedEvent := do
   pure {
     type   := ← reqAny j ["eventType", "type"] (pEnum eventTypeOf)
-    time   := ← reqAny j ["eventDate", "time"] pDate
+    time   := ← reqAny j ["eventDate", "time"] (fun v => do parseDateRoll (← v.getStr?))
     payoff := (← optAny j ["payoff"] pFloat).getD 0.0 }
 
 /-- Decode one test entry: its `terms`, horizon `to`, and expected events

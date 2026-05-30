@@ -66,7 +66,7 @@ def stf_IED (ct : Terms) (t : Time) (s : State) : State :=
   { s with
     nt   := sign (Terms.cntrl ct) * Terms.nt ct
     ipnr := Terms.ipnr ct
-    ipac := ct.accruedInterest.getD 0.0
+    ipac := sign (Terms.cntrl ct) * ct.accruedInterest.getD 0.0
     sd   := t }
 
 def stf_MD (_ct : Terms) (t : Time) (s : State) : State :=
@@ -192,7 +192,7 @@ def init (ct : Terms) (md t₀ : Time) : State :=
   { md    := md
     nt    := if t₀ < md then sign (Terms.cntrl ct) * Terms.nt ct else 0.0
     ipnr  := if t₀ < md then Terms.ipnr ct else 0.0
-    ipac  := ct.accruedInterest.getD 0.0
+    ipac  := sign (Terms.cntrl ct) * ct.accruedInterest.getD 0.0
     feac  := ct.feeAccrued.getD 0.0
     nsc   := ct.notionalScalingMultiplier.getD 1.0
     isc   := ct.interestScalingMultiplier.getD 1.0

@@ -39,9 +39,8 @@ abbrev State := Lending.State
     otherwise the fixed `R(CNTRL)·IPCBA`. -/
 def lamIpcb (ct : Terms) (nt : Float) : Float :=
   match ct.interestCalculationBase with
-  | some .IPCB_NT => nt
-  | none          => nt
-  | some _        => sign (Terms.cntrl ct) * Terms.ipcba ct
+  | some .IPCB_NTL => sign (Terms.cntrl ct) * Terms.ipcba ct   -- fixed at IPCBA, stepped at IPCB events
+  | _              => nt                                       -- NT / NTIED / none track the notional
 
 /-- Interest accrual on the interest calculation base `Ipcb`. -/
 def ipacAccrIpcb (ct : Terms) (t : Time) (s : State) : Float :=
@@ -71,9 +70,8 @@ def stf_PR (ct : Terms) (t : Time) (s : State) : State :=
            feac := PAM.feacNext ct t s
            nt   := nt'
            ipcb := match ct.interestCalculationBase with
-                   | some .IPCB_NT => nt'
-                   | none          => nt'
-                   | some _        => s.ipcb
+                   | some .IPCB_NTL => s.ipcb   -- NTL: base fixed (stepped at IPCB)
+                   | _              => nt'      -- NT / NTIED / none track the notional
            sd   := t }
 
 def stf_IPCB (_ct : Terms) (t : Time) (s : State) : State :=
@@ -83,9 +81,8 @@ def stf_IPCI (ct : Terms) (t : Time) (s : State) : State :=
   let nt' := s.nt + ipacAccrIpcb ct t s
   { s with nt := nt', ipac := 0.0, feac := PAM.feacNext ct t s
            ipcb := match ct.interestCalculationBase with
-                   | some .IPCB_NT => nt'
-                   | none          => nt'
-                   | some _        => s.ipcb
+                   | some .IPCB_NTL => s.ipcb   -- NTL: base fixed (stepped at IPCB)
+                   | _              => nt'      -- NT / NTIED / none track the notional
            sd := t }
 
 /-- STF dispatcher: LAM-specific events plus PAM delegation. -/
@@ -104,9 +101,15 @@ def stf (ct : Terms) (rf : RiskFactorEnv) (ev : EventType) (t : Time) (s : State
 def pof_PR (rf : RiskFactorEnv) (t : Time) (s : State) : Payoff :=
   rf.curs t * s.nsc * redeemed s.nt s.prnxt
 
+/-- Interest payment accrues on the interest calculation base `Ipcb` (which may
+    differ from `Nt` when `IPCB ≠ 'NT'`), unlike PAM which accrues on `Nt`. -/
+def pof_IP (ct : Terms) (rf : RiskFactorEnv) (t : Time) (s : State) : Payoff :=
+  rf.curs t * s.isc * (s.ipac + yf ct s.sd t * s.ipnr * s.ipcb)
+
 def pof (ct : Terms) (rf : RiskFactorEnv) (ev : EventType) (t : Time) (s : State) : Payoff :=
   match ev with
   | .PR => pof_PR rf t s
+  | .IP => pof_IP ct rf t s
   | _   => PAM.pof ct rf ev t s
 
 -- ---------------------------------------------------------------------------

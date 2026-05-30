@@ -97,8 +97,11 @@ def maturityOf (ct : Lending.Terms) : Option LocalTime :=
     | _, _, _ => none
 
 /-- Build the full event schedule for a lending contract.  `includePR` adds the
-    principal-redemption cycle (LAM/NAM/ANN). -/
-def genSchedule (ct : Lending.Terms) (includePR : Bool) : Schedule :=
+    principal-redemption cycle (LAM/NAM/ANN).  `mEOD`/`tEOD` mark the maturity /
+    termination as end-of-day (`23:59:59`): the structure uses the written date,
+    but those settlement events are rolled to the next midnight. -/
+def genSchedule (ct : Lending.Terms) (includePR : Bool)
+    (mEOD : Bool := false) (tEOD : Bool := false) : Schedule :=
   let cfg := ct.scheduleConfig
   let ied := ct.initialExchangeDate
   let md  := maturityOf ct
@@ -134,9 +137,11 @@ def genSchedule (ct : Lending.Terms) (includePR : Bool) : Schedule :=
     single ct.terminationDate .TD ++     -- termination: contract sold/closed early
     ipEvents ++
     cyclic ct.cycleAnchorDateOfFee ct.cycleOfFee .FP ++
-    -- interest-calculation-base fixings re-set Ipcb to the current notional
+    -- interest-calculation-base fixings re-set Ipcb to the current notional;
+    -- like PR, the schedule excludes the maturity endpoint (so the long-stub
+    -- merge applies and there is no fixing at maturity)
     cyclic ct.cycleAnchorDateOfInterestCalculationBase
-      ct.cycleOfInterestCalculationBase .IPCB ++
+      ct.cycleOfInterestCalculationBase .IPCB false ++
     -- scaling-index fixings update Nsc/Isc
     cyclic ct.cycleAnchorDateOfScalingIndex ct.cycleOfScalingIndex .SC ++
     rrEvents ++
@@ -152,6 +157,20 @@ def genSchedule (ct : Lending.Terms) (includePR : Bool) : Schedule :=
   -- events before the status date are historical (their effect is in the init
   -- state); the analysis — and the first interest accrual — starts at SD.
   let events := let sdT := toTime ct.statusDate; events.filter (fun (e : Event) => Nat.ble sdT e.1)
+  -- end-of-day roll: maturity events (all at MD) and the TD event move to the
+  -- next midnight; the schedule structure above kept the written date.
+  let events := if mEOD then
+      match md.map toTime with
+      | some mdT => events.map fun e => if e.1 == mdT then (mdT + 1, e.2) else e
+      | none     => events
+    else events
+  let events := if tEOD then
+      match ct.terminationDate.map toTime with
+      | some tdT => events.map fun e =>
+          if e.1 == tdT && eventTypePriority e.2 == eventTypePriority .TD
+          then (tdT + 1, e.2) else e
+      | none     => events
+    else events
   -- order by event time, breaking ties by event-type priority
   let lt := fun (a b : Event) =>
     if a.1 == b.1 then Nat.blt (eventTypePriority a.2) (eventTypePriority b.2)
@@ -192,7 +211,7 @@ def afterPurchase (ct : Lending.Terms) (cfs : Cashflows) : Cashflows :=
 def pamCashflows (ct : Lending.Terms) (rf : RiskFactorEnv) : Cashflows :=
   remapSettlement ct.scheduleConfig <| afterPurchase ct <|
     Execution.runSchedule (PAM.stf ct rf) (PAM.pof ct rf)
-      (PAM.init ct (mdTime ct) (sdTime ct)) (genSchedule ct false)
+      (PAM.init ct (mdTime ct) (sdTime ct)) (genSchedule ct false rf.maturityEOD rf.terminationEOD)
 
 /-- Number of `PR` events in a schedule. -/
 private def numPR (sched : Schedule) : Nat :=
@@ -211,12 +230,12 @@ def lamInit (ct : Lending.Terms) : State :=
 def lamCashflows (ct : Lending.Terms) (rf : RiskFactorEnv) : Cashflows :=
   remapSettlement ct.scheduleConfig <| afterPurchase ct <|
     Execution.runSchedule (LAM.stf ct rf) (LAM.pof ct rf)
-      (lamInit ct) (genSchedule ct true)
+      (lamInit ct) (genSchedule ct true rf.maturityEOD rf.terminationEOD)
 
 def namCashflows (ct : Lending.Terms) (rf : RiskFactorEnv) : Cashflows :=
   remapSettlement ct.scheduleConfig <| afterPurchase ct <|
     Execution.runSchedule (NAM.stf ct rf) (NAM.pof ct rf)
-      (NAM.init ct (mdTime ct) (sdTime ct)) (genSchedule ct true)
+      (NAM.init ct (mdTime ct) (sdTime ct)) (genSchedule ct true rf.maturityEOD rf.terminationEOD)
 
 /-- The annuity amortization horizon: the `amortizationDate` if given, else the
     maturity.  The instalment amortizes to here even when an earlier
@@ -248,7 +267,10 @@ def annInit (ct : Lending.Terms) (rf : RiskFactorEnv) : State :=
                        ct.cycleOfPrincipalRedemption with
       | some a, some c => Nat.max iedT (toTime (Date.subPeriod a c.n c.period))
       | _, _           => iedT
-    let bounds := (first :: prTimes) ++ [annHorizonT ct]
+    -- the annuity amortizes to the horizon; an end-of-day amortization date
+    -- extends the final period to the next midnight.
+    let horizonT := annHorizonT ct + (if rf.maturityEOD then 1 else 0)
+    let bounds := (first :: prTimes) ++ [horizonT]
     let yfs    := (bounds.zip bounds.tail).map fun p => yf ct p.1 p.2
     let a      := Conventions.sign (Terms.cntrl ct) *
                     Schedule.annuity (Float.abs grown.nt) (Float.abs grown.ipac) (Terms.ipnr ct) yfs
@@ -278,6 +300,6 @@ def annRun (ct : Lending.Terms) (rf : RiskFactorEnv) (mdT : Time) :
 
 def annCashflows (ct : Lending.Terms) (rf : RiskFactorEnv) : Cashflows :=
   remapSettlement ct.scheduleConfig <| afterPurchase ct <|
-    annRun ct rf (annHorizonT ct) (annInit ct rf) (genSchedule ct true)
+    annRun ct rf (annHorizonT ct) (annInit ct rf) (genSchedule ct true rf.maturityEOD rf.terminationEOD)
 
 end Actus.Contract.Lending.Execution

@@ -34,3 +34,6 @@ __pycache__/
 *.toc
 *.bbl
 *.blg
+
+# Vendored ACTUS reference test data (fetch with scripts/fetch-actus-tests.sh)
+actus-tests/
