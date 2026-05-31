@@ -98,6 +98,8 @@ def defaultTerms : Terms Float where
   cycleOfOptionality          := none
   cycleAnchorDateOfOptionality := none
   optionStrike1               := none
+  optionType                  := none
+  optionExerciseType          := none
   settlementPeriod := none
   exerciseAmount   := none
   futuresPrice     := none
@@ -117,6 +119,7 @@ def defaultTerms : Terms Float where
   cycleOfDividend           := none
   cycleAnchorDateOfDividend := none
   nextDividendPaymentAmount := none
+  marketObjectCodeOfDividends := none
   contractStructure := none
   deliverySettlement := none
   enableSettlement := false
@@ -201,6 +204,8 @@ structure RiskFactorEnv (α : Type) [Amount α] where
   /-- Market rate by market-object code: `Oʳᶠ(m, t)`.  Used by composite
       contracts (SWAPS) to resolve each leg's own rate-reset series. -/
   marketRateOf : String → Time → α := fun _ _ => 0
+  /-- Observed dividend stream `Oᵉᵛ(DV)` — (date, amount) pairs (STK). -/
+  dividends : List (Time × α) := []
   /-- Year fraction `Y(s, t)` between two `Time` points. -/
   yf : Time → Time → α := fun _ _ => 0
   /-- Maturity / termination given as end-of-day (`23:59:59`): the event settles
@@ -208,6 +213,7 @@ structure RiskFactorEnv (α : Type) [Amount α] where
       written date (§2.8). -/
   maturityEOD    : Bool := false
   terminationEOD : Bool := false
+  purchaseEOD    : Bool := false
 
 /-- Trivial environment: unit fx factor, no market rate, no prepayment. -/
 def RiskFactorEnv.id {α : Type} [Amount α] : RiskFactorEnv α := {}

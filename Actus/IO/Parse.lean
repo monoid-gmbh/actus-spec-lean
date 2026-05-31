@@ -129,7 +129,7 @@ def calendarOf : String → Except String Calendar := enum "calendar"
   [("MF", .CLDR_MF), ("NC", .CLDR_NC)]
 
 def referenceRoleOf : String → Except String ReferenceRole := enum "referenceRole"
-  [("FIL", .FIL), ("SEL", .SEL), ("MOC", .MOC)]
+  [("FIL", .FIL), ("SEL", .SEL), ("MOC", .MOC), ("UDL", .UDL)]
 
 def performanceOf : String → Except String Performance := enum "contractPerformance"
   [("PF", .PRF_PF), ("DL", .PRF_DL), ("DQ", .PRF_DQ), ("DF", .PRF_DF)]
@@ -219,9 +219,15 @@ partial def termsFromJson (j : Json) : Except String (Terms Float) := do
     opt j "contractStructure" (fun v => do
       let arr ← v.getArr?
       (arr.toList.mapM (fun el => do
-        let child ← req el "object" termsFromJson
         let role  ← req el "referenceRole" (pEnum referenceRoleOf)
-        pure (ContractStructure.mk (Reference.referenceTerms child) role child.contractType))))
+        let rtyp  ← (opt el "referenceType" pStr).map (·.getD "CNT")
+        if rtyp == "MOC" then
+          -- underlying referenced by market-object code (not a full contract)
+          let moc ← req el "object" (fun o => req o "marketObjectCode" pStr)
+          pure (ContractStructure.mk (Reference.referenceId moc) role .PAM)
+        else
+          let child ← req el "object" termsFromJson
+          pure (ContractStructure.mk (Reference.referenceTerms child) role child.contractType))))
   let cal ← opt j "calendar" (pEnum calendarOf)
   let bdc ← opt j "businessDayConvention" (pEnum bdcOf)
   let eom ← opt j "endOfMonthConvention" (pEnum eomOf)
@@ -291,6 +297,12 @@ partial def termsFromJson (j : Json) : Except String (Terms Float) := do
     marketObjectCodeOfScalingIndex := ← opt j "marketObjectCodeOfScalingIndex" pStr
     scalingIndexAtContractDealDate := ← opt j "scalingIndexAtContractDealDate" pFloat
     scalingIndexAtStatusDate       := ← opt j "scalingIndexAtStatusDate" pFloat
+    marketObjectCodeOfDividends    := ← opt j "marketObjectCodeOfDividends" pStr
+    quantity                       := ← opt j "quantity" pFloat
+    optionStrike1                  := ← opt j "optionStrike1" pFloat
+    optionType                     := ← opt j "optionType" pStr
+    optionExerciseType             := ← opt j "optionExerciseType" pStr
+    settlementPeriod               := ← opt j "settlementPeriod" pCycle
     contractStructure              := contractStructure
     deliverySettlement             := ← opt j "deliverySettlement" pStr }
 
@@ -348,8 +360,11 @@ def riskFactorsFromJson (j : Json) (ct : Terms Float) : Except String (RiskFacto
          scalingIndex   := stepLookup (lookup ct.marketObjectCodeOfScalingIndex)
          -- MOC-indexed rate lookup (composite legs resolve their own series)
          marketRateOf   := fun m => stepLookup (lookup (some m))
+         -- observed dividend stream (STK): the (date, amount) pairs of its series
+         dividends      := lookup ct.marketObjectCodeOfDividends
          maturityEOD    := eodOf "maturityDate" || eodOf "amortizationDate"
-         terminationEOD := eodOf "terminationDate" }
+         terminationEOD := eodOf "terminationDate"
+         purchaseEOD    := eodOf "purchaseDate" }
 
 -- ---------------------------------------------------------------------------
 -- Test-case wrapper
@@ -412,6 +427,9 @@ def cashflowsOf (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   | .ANN => Actus.Contract.Lending.Execution.annCashflows ct rf
   | .CLM => Actus.Contract.Lending.Execution.clmCashflows ct rf
   | .SWAPS => Actus.Contract.Lending.Execution.swapsCashflows ct rf
+  | .COM => Actus.Contract.Lending.Execution.comCashflows ct rf
+  | .STK => Actus.Contract.Lending.Execution.stkCashflows ct rf
+  | .OPTNS => Actus.Contract.Lending.Execution.optnsCashflows ct rf
   | _    => []
 
 /-- Parse a test case and compute its cashflows under its own observed risk

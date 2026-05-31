@@ -244,6 +244,7 @@ inductive ReferenceRole where
   | FIL -- First leg
   | SEL -- Second leg
   | MOC -- Matched object code
+  | UDL -- Underlying (e.g. an option's underlying instrument)
   deriving Repr, DecidableEq
 
 -- ---------------------------------------------------------------------------
@@ -333,6 +334,8 @@ mutual
     cycleOfOptionality          : Option Cycle
     cycleAnchorDateOfOptionality : Option LocalTime
     optionStrike1               : Option α
+    optionType                  : Option String   -- "C" call / "P" put
+    optionExerciseType          : Option String   -- "E" European / "A" American / "B" Bermudan
     -- Settlement
     settlementPeriod : Option Cycle
     exerciseAmount   : Option α
@@ -356,6 +359,7 @@ mutual
     cycleOfDividend           : Option Cycle
     cycleAnchorDateOfDividend : Option LocalTime
     nextDividendPaymentAmount : Option α
+    marketObjectCodeOfDividends : Option String
     -- Composite contracts (e.g. SWAPS): the child legs and their reference roles
     contractStructure : Option (List (ContractStructure α))
     -- Settlement mode for composites: "S" = net/cash, else gross/delivery ("D")

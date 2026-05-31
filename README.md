@@ -13,9 +13,12 @@ models**:
 * a **functional** model (computable state-transition and payoff functions) —
   the executable engine,
 
-and the two are **proven to agree**. The engine is validated against the ACTUS
-Foundation's reference test suite: it matches **109 / 109** reference contracts
-exactly (all 2593 cash flows).
+and the two are **proven to agree**. Several further contract types are also
+implemented on the same engine — **COM** (commodity), **STK** (stock), **OPTNS**
+(European options), plus partial **CLM** (call money) and **SWAPS** (swaps). The
+engine is validated against the ACTUS Foundation's reference test suite: it
+matches **146 / 146** reference contracts exactly across the fully-supported
+types (all 2710 cash flows).
 
 The spec is **generic over the amount type**: it runs on native `Float` for the
 executable engine, and on the real numbers `ℝ` (via Mathlib) for the metatheorems
@@ -131,9 +134,16 @@ diffed against the expected one (1-cent tolerance):
 | LAM (linear amortizer) | 31 / 31 | 711 / 711 |
 | NAM (negative amortizer) | 22 / 22 | 578 / 578 |
 | ANN (annuity) | 31 / 31 | 1003 / 1003 |
-| **Total** | **109 / 109** | **2593 / 2593** |
+| COM (commodity) | 4 / 4 | 6 / 6 |
+| STK (stock) | 10 / 10 | 75 / 75 |
+| OPTNS (European option) | 23 / 23 | 36 / 36 |
+| **Total (gated)** | **146 / 146** | **2710 / 2710** |
 
-Every reference contract matches exactly. Reproduce with:
+Every contract in the gated suite matches exactly. Two further types are
+implemented but not yet fully conformant, so they are **not** in the gated suite:
+**CLM** (10 / 15 — defined-maturity contracts; the open-maturity "call" needs the
+event observer) and **SWAPS** (10 / 11 — only one annuity-maturity-derivation
+precision case remains). Reproduce with:
 
 ```bash
 scripts/fetch-actus-tests.sh    # download the reference data into actus-tests/

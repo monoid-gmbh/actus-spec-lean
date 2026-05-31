@@ -147,12 +147,13 @@ def main (args : List String) : IO UInt32 := do
   let dir : System.FilePath := args.head?.getD "actus-tests"
   IO.println s!"ACTUS conformance — lending family (tolerance {tol})"
   IO.println s!"reading from: {dir}"
-  -- The gated suite is the fully-conformant lending family.  CLM (defined
-  -- maturity, 10/15) and SWAPS (8/11 — fixed & floating legs, delivery & net settlement;
-  -- swaps06 precision and swaps09/10 parent purchase/termination remain) are implemented
-  -- but partial, so actus-tests-{clm,swaps}.json are not gated here.
+  -- Gated suite = the fully-conformant types: the lending family (PAM/LAM/NAM/
+  -- ANN), COM (4/4), STK (10/10), and OPTNS (23/23, European cash-settled).
+  -- Still partial / ungated: CLM (defined maturity, 10/15) and SWAPS (10/11 —
+  -- only swaps06, an ANN-maturity-derivation precision edge, remains).
   let files := ["actus-tests-pam.json", "actus-tests-lam.json",
-                "actus-tests-nam.json", "actus-tests-ann.json"]
+                "actus-tests-nam.json", "actus-tests-ann.json",
+                "actus-tests-com.json", "actus-tests-stk.json", "actus-tests-optns.json"]
   let mut g : Tally := {}
   for f in files do
     g := g + (← runFile dir f)
