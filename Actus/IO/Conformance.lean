@@ -44,20 +44,36 @@ structure Diff where
   missing  : Array String := #[]
   extra    : Array String := #[]
 
-/-- Remove the first computed cashflow whose key matches `key`, returning its
-    payoff and the rest. -/
-private def popKey (key : Time × EventType) : List CF → Option (Float × List CF)
+/-- Remove the first computed cashflow whose key matches `key` *and* whose
+    payoff matches `target` within tolerance, returning its payoff and the rest. -/
+private def popExact (key : Time × EventType) (target : Float) :
+    List CF → Option (Float × List CF)
+  | []      => none
+  | c :: cs =>
+    if sameKey c.1 key && Float.abs (c.2 - target) ≤ tol then some (c.2, cs)
+    else (popExact key target cs).map (fun (v, rest) => (v, c :: rest))
+
+/-- Remove the first computed cashflow whose key matches `key`. -/
+private def popAny (key : Time × EventType) : List CF → Option (Float × List CF)
   | []      => none
   | c :: cs =>
     if sameKey c.1 key then some (c.2, cs)
-    else (popKey key cs).map (fun (v, rest) => (v, c :: rest))
+    else (popAny key cs).map (fun (v, rest) => (v, c :: rest))
+
+/-- Match a computed cashflow to an expected one of the same key, preferring an
+    exact (within-tolerance) value match so that several same-`(date,type)`
+    events (e.g. both legs of a SWAPS at `IED`) pair up correctly rather than
+    positionally. -/
+private def popKey (key : Time × EventType) (target : Float)
+    (cs : List CF) : Option (Float × List CF) :=
+  (popExact key target cs).orElse (fun _ => popAny key cs)
 
 /-- Greedy key-matching diff of expected against computed cashflows. -/
 private def diffCF : List CF → List CF → Diff → Diff
   | [], rem, d =>
       { d with extra := d.extra ++ (rem.map (fun c => s!"{keyStr c.1}={c.2}")).toArray }
   | e :: es, comp, d =>
-    match popKey e.1 comp with
+    match popKey e.1 e.2 comp with
     | some (v, comp') =>
         let msg := s!"{keyStr e.1}: expected {e.2}, got {v}"
         let d := if Float.abs (v - e.2) ≤ tol then { d with matched := d.matched + 1 }
@@ -131,6 +147,10 @@ def main (args : List String) : IO UInt32 := do
   let dir : System.FilePath := args.head?.getD "actus-tests"
   IO.println s!"ACTUS conformance — lending family (tolerance {tol})"
   IO.println s!"reading from: {dir}"
+  -- The gated suite is the fully-conformant lending family.  CLM (defined
+  -- maturity, 10/15) and SWAPS (8/11 — fixed & floating legs, delivery & net settlement;
+  -- swaps06 precision and swaps09/10 parent purchase/termination remain) are implemented
+  -- but partial, so actus-tests-{clm,swaps}.json are not gated here.
   let files := ["actus-tests-pam.json", "actus-tests-lam.json",
                 "actus-tests-nam.json", "actus-tests-ann.json"]
   let mut g : Tally := {}

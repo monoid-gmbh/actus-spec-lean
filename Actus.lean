@@ -32,6 +32,7 @@ import «Actus».Contract.PAM
 import «Actus».Contract.LAM
 import «Actus».Contract.NAM
 import «Actus».Contract.ANN
+import «Actus».Contract.CLM
 import «Actus».Contract.Lending.Agree
 import «Actus».Contract.Lending.Properties
 import «Actus».Contract.Lending.Execution

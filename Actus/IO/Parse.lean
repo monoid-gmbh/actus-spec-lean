@@ -128,6 +128,9 @@ def bdcOf : String → Except String BusinessDayConvention := enum "businessDayC
 def calendarOf : String → Except String Calendar := enum "calendar"
   [("MF", .CLDR_MF), ("NC", .CLDR_NC)]
 
+def referenceRoleOf : String → Except String ReferenceRole := enum "referenceRole"
+  [("FIL", .FIL), ("SEL", .SEL), ("MOC", .MOC)]
+
 def performanceOf : String → Except String Performance := enum "contractPerformance"
   [("PF", .PRF_PF), ("DL", .PRF_DL), ("DQ", .PRF_DQ), ("DF", .PRF_DF)]
 
@@ -205,11 +208,20 @@ private def pEnum  (f : String → Except String α) (j : Json) : Except String 
 -- ---------------------------------------------------------------------------
 
 /-- Decode a `terms` object into `ContractTerms Float`. -/
-def termsFromJson (j : Json) : Except String (Terms Float) := do
+partial def termsFromJson (j : Json) : Except String (Terms Float) := do
   let contractType ← req j "contractType" (pEnum contractTypeOf)
   let contractId   ← (opt j "contractID" pStr).map (·.getD "")
-  let contractRole ← req j "contractRole" (pEnum contractRoleOf)
+  -- child legs of a composite (SWAPS) omit contractRole — the parent assigns it
+  let contractRole ← (opt j "contractRole" (pEnum contractRoleOf)).map (·.getD .CR_RPA)
   let statusDate   ← req j "statusDate" pDate
+  -- composite contract structure: recursively parse each child leg's `object`
+  let contractStructure : Option (List (ContractStructure Float)) ←
+    opt j "contractStructure" (fun v => do
+      let arr ← v.getArr?
+      (arr.toList.mapM (fun el => do
+        let child ← req el "object" termsFromJson
+        let role  ← req el "referenceRole" (pEnum referenceRoleOf)
+        pure (ContractStructure.mk (Reference.referenceTerms child) role child.contractType))))
   let cal ← opt j "calendar" (pEnum calendarOf)
   let bdc ← opt j "businessDayConvention" (pEnum bdcOf)
   let eom ← opt j "endOfMonthConvention" (pEnum eomOf)
@@ -278,7 +290,9 @@ def termsFromJson (j : Json) : Except String (Terms Float) := do
     cycleOfScalingIndex            := ← opt j "cycleOfScalingIndex" pCycle
     marketObjectCodeOfScalingIndex := ← opt j "marketObjectCodeOfScalingIndex" pStr
     scalingIndexAtContractDealDate := ← opt j "scalingIndexAtContractDealDate" pFloat
-    scalingIndexAtStatusDate       := ← opt j "scalingIndexAtStatusDate" pFloat }
+    scalingIndexAtStatusDate       := ← opt j "scalingIndexAtStatusDate" pFloat
+    contractStructure              := contractStructure
+    deliverySettlement             := ← opt j "deliverySettlement" pStr }
 
 /-- Decode a `terms` object given as a raw JSON string. -/
 def termsFromString (s : String) : Except String (Terms Float) := do
@@ -332,6 +346,8 @@ def riskFactorsFromJson (j : Json) (ct : Terms Float) : Except String (RiskFacto
     | _             => false
   pure { marketRate     := stepLookup (lookup ct.marketObjectCodeOfRateReset)
          scalingIndex   := stepLookup (lookup ct.marketObjectCodeOfScalingIndex)
+         -- MOC-indexed rate lookup (composite legs resolve their own series)
+         marketRateOf   := fun m => stepLookup (lookup (some m))
          maturityEOD    := eodOf "maturityDate" || eodOf "amortizationDate"
          terminationEOD := eodOf "terminationDate" }
 
@@ -394,6 +410,8 @@ def cashflowsOf (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   | .LAM => Actus.Contract.Lending.Execution.lamCashflows ct rf
   | .NAM => Actus.Contract.Lending.Execution.namCashflows ct rf
   | .ANN => Actus.Contract.Lending.Execution.annCashflows ct rf
+  | .CLM => Actus.Contract.Lending.Execution.clmCashflows ct rf
+  | .SWAPS => Actus.Contract.Lending.Execution.swapsCashflows ct rf
   | _    => []
 
 /-- Parse a test case and compute its cashflows under its own observed risk

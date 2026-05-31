@@ -356,6 +356,10 @@ mutual
     cycleOfDividend           : Option Cycle
     cycleAnchorDateOfDividend : Option LocalTime
     nextDividendPaymentAmount : Option α
+    -- Composite contracts (e.g. SWAPS): the child legs and their reference roles
+    contractStructure : Option (List (ContractStructure α))
+    -- Settlement mode for composites: "S" = net/cash, else gross/delivery ("D")
+    deliverySettlement : Option String
     -- Misc
     enableSettlement : Bool
 end

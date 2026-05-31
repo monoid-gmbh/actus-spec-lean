@@ -117,6 +117,8 @@ def defaultTerms : Terms Float where
   cycleOfDividend           := none
   cycleAnchorDateOfDividend := none
   nextDividendPaymentAmount := none
+  contractStructure := none
+  deliverySettlement := none
   enableSettlement := false
 
 namespace Terms
@@ -196,6 +198,9 @@ structure RiskFactorEnv (α : Type) [Amount α] where
   annuityYfs : Time → List α := fun _ => []
   /-- Scaling index `Oʳᶠ(SCMO, t)` driving the `SC` scaling multipliers. -/
   scalingIndex : Time → α := fun _ => 1
+  /-- Market rate by market-object code: `Oʳᶠ(m, t)`.  Used by composite
+      contracts (SWAPS) to resolve each leg's own rate-reset series. -/
+  marketRateOf : String → Time → α := fun _ _ => 0
   /-- Year fraction `Y(s, t)` between two `Time` points. -/
   yf : Time → Time → α := fun _ _ => 0
   /-- Maturity / termination given as end-of-day (`23:59:59`): the event settles
