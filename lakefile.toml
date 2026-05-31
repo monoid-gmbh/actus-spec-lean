@@ -20,6 +20,10 @@ rev = "v4.30.0"
 
 [[lean_lib]]
 name = "Actus"
+# Include every submodule in the library (not just the root `Actus` module), so
+# doc-gen4 generates API pages for them — PAM/LAM/NAM/ANN, the utility layer,
+# the metatheorems, etc.  `Actus.*` = `Actus` and all submodules.
+globs = ["Actus.*"]
 
 [[lean_exe]]
 name = "conformance"
