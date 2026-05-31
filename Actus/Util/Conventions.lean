@@ -16,25 +16,29 @@ This file replaces the placeholder `sign` that previously lived in
 
 import Actus.Protocol
 import Actus.Util.Date
+import Actus.Util.Amount
 
 namespace Actus.Util.Conventions
 
 open Actus.Protocol
 open Actus.Util.Date
+open Actus (Amount)
 
 -- ---------------------------------------------------------------------------
 -- Contract Role Sign  (R : CNTRL → {-1, +1}),  Table 1, p.6
 -- ---------------------------------------------------------------------------
 
-/-- Contract-role sign: `+1` for a claim (asset side), `-1` for an obligation. -/
-def sign : ContractRole → Float
-  | .CR_RPA => 1.0   | .CR_RPL => -1.0
-  | .CR_LG  => 1.0   | .CR_ST  => -1.0
-  | .CR_BUY => 1.0   | .CR_SEL => -1.0
-  | .CR_RFL => 1.0   | .CR_PFL => -1.0
-  | .CR_RF  => 1.0   | .CR_PF  => -1.0
-  | .CR_CLO => 1.0   | .CR_CNO => 1.0
-  | .CR_COL => 1.0
+/-- Contract-role sign: `+1` for a claim (asset side), `-1` for an obligation.
+    Generic over the amount type so the same formula serves the executable
+    (`Float`) and the relational (`ℝ`) models. -/
+def sign {α : Type} [Amount α] : ContractRole → α
+  | .CR_RPA => 1   | .CR_RPL => -1
+  | .CR_LG  => 1   | .CR_ST  => -1
+  | .CR_BUY => 1   | .CR_SEL => -1
+  | .CR_RFL => 1   | .CR_PFL => -1
+  | .CR_RF  => 1   | .CR_PF  => -1
+  | .CR_CLO => 1   | .CR_CNO => 1
+  | .CR_COL => 1
 
 -- ---------------------------------------------------------------------------
 -- End-Of-Month convention  (§3.3)

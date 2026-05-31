@@ -99,7 +99,7 @@ private def runFile (dir : System.FilePath) (fname : String) : IO Tally := do
       | .ok tc =>
         total := total + 1
         let rf := (riskFactorsFromJson kv.2 tc.terms).toOption.getD {}
-        let horizon := tc.to.map Actus.Contract.Lending.Execution.toTime
+        let horizon := tc.horizon.map Actus.Contract.Lending.Execution.toTime
         let inHorizon := fun (t : Time) =>
           match horizon with | some h => t ≤ h | none => true
         let expected : List CF :=

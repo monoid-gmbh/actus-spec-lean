@@ -17,7 +17,7 @@ open Actus.Protocol
 open Actus.Contract.Lending
 open Actus.Util.Conventions (sign)
 
-def lam : Terms :=
+def lam : Terms Float :=
   { defaultTerms with
     contractRole                         := .CR_RPA
     notionalPrincipal                    := some 1000.0
@@ -32,8 +32,8 @@ def lam : Terms :=
 
 /-- A principal-redemption step reduces the notional by the redeemed amount
     (the instalment capped at the remaining notional). -/
-theorem pr_reduces_notional (t : Time) (s : State) :
-    (LAM.stf_PR lam t s).nt = s.nt - LAM.redeemed s.nt s.prnxt := rfl
+theorem pr_reduces_notional (rf : RiskFactorEnv Float) (t : Time) (s : State Float) :
+    (LAM.stf_PR lam rf t s).nt = s.nt - LAM.redeemed s.nt s.prnxt := rfl
 
 #eval Lending.Execution.genSchedule lam true
 #eval Lending.Execution.lamCashflows lam .id

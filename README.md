@@ -15,8 +15,12 @@ models**:
 
 and the two are **proven to agree**. The engine is validated against the ACTUS
 Foundation's reference test suite: it matches **109 / 109** reference contracts
-exactly (all 2593 cash flows). The project depends only on Lean's standard
-library — **no Mathlib**.
+exactly (all 2593 cash flows).
+
+The spec is **generic over the amount type**: it runs on native `Float` for the
+executable engine, and on the real numbers `ℝ` (via Mathlib) for the metatheorems
+that need an ordered field — e.g. the rate stays within its cap/floor and a
+redemption never overshoots zero.
 
 ## Quick start
 
@@ -102,13 +106,18 @@ engine and the clean relational spec cannot drift apart. Determinism then falls
 out as a corollary, and `Properties.lean` proves further structural
 metatheorems.
 
-### A note on `Float`
+### A note on `Float` and `ℝ`
 
-Amounts use Lean's native `Float` (keeping the engine executable and
-Mathlib-free). Since `Float` is not kernel-reducible, the in-Lean cashflow
-theorems are stated in *formula form* (both sides unfold to the same
-expression), and concrete numeric agreement is checked empirically by the
-conformance harness rather than by `rfl`.
+The contract logic is written once, generically over an amount type `α`, and
+instantiated twice. The **executable** engine uses Lean's native `Float`: fast,
+but not kernel-reducible and with no usable algebraic laws (a single `NaN`
+falsifies even `a ≤ a`), so the `Float`-side cashflow theorems are stated in
+*formula form* (both sides unfold to the same expression) and concrete numeric
+agreement is checked empirically by the conformance harness rather than by
+`rfl`. The **specification** and its quantitative metatheorems use the real
+numbers `ℝ` (via Mathlib), an exact ordered field where bounds like the rate
+cap/floor window and redemption non-overshoot are genuine theorems. `Float` is
+deliberately *not* expected to satisfy those laws — that split is the point.
 
 ## Conformance
 

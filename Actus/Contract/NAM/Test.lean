@@ -15,7 +15,7 @@ namespace Actus.Contract.NAM.Test
 open Actus.Protocol
 open Actus.Contract.Lending
 
-def nam : Terms :=
+def nam : Terms Float :=
   { defaultTerms with
     contractRole                         := .CR_RPA
     notionalPrincipal                    := some 1000.0
@@ -30,8 +30,8 @@ def nam : Terms :=
 
 /-- The NAM redemption applies the instalment interest-first: the principal
     reduction is `Prnxt − Ipac_{t+}`. -/
-theorem pr_principal_portion (t : Time) (s : State) :
-    (NAM.stf_PR nam t s).nt = s.nt - LAM.redeemed s.nt (s.prnxt - LAM.ipacAccrIpcb nam t s) := rfl
+theorem pr_principal_portion (rf : RiskFactorEnv Float) (t : Time) (s : State Float) :
+    (NAM.stf_PR nam rf t s).nt = s.nt - LAM.redeemed s.nt (s.prnxt - LAM.ipacAccrIpcb rf t s) := rfl
 
 #eval Lending.Execution.namCashflows nam .id
 

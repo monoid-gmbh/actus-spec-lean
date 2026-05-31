@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    lean4.url = "github:leanprover/lean4/v4.20.0";
+    lean4.url = "github:leanprover/lean4/v4.30.0";
   };
 
   outputs = { self, nixpkgs, flake-utils, lean4 }:
@@ -34,11 +34,12 @@
         # Development shell
         devShells.default = pkgs.mkShell {
           buildInputs = [
-            # Lean 4 toolchain
-            lean
-            
-            # Lake (Lean build tool) - comes with Lean
-            
+            # NOTE: Lean/Lake are intentionally NOT provided by nix here.  They
+            # come from elan, which reads ./lean-toolchain and fetches the exact
+            # upstream release (currently v4.30.0) matching Mathlib's prebuilt
+            # cache (`lake exe cache get`).  A nix-pinned Lean tends to mismatch
+            # that toolchain and shadow elan, breaking `lake build`.
+
             # Python for blueprint
             pythonEnv
             
@@ -58,11 +59,16 @@
           shellHook = ''
             echo "🎯 ACTUS Lean 4 Development Environment"
             echo ""
-            
-            # Set up Lean PATH
-            export LEAN_PATH="${lean}/bin"
-            export PATH="${lean}/bin:$PATH"
-            
+
+            # Lean/Lake are provided by elan (not nix): elan's shims read
+            # ./lean-toolchain and dispatch to the pinned release.  We do NOT
+            # prepend a nix Lean to PATH, which would shadow elan with the wrong
+            # version.
+            if ! command -v elan >/dev/null 2>&1; then
+              echo "⚠ elan not found on PATH — install it from https://github.com/leanprover/elan"
+              echo "  so that 'lake' uses the toolchain pinned in ./lean-toolchain."
+            fi
+
             # # Create local Python environment for leanblueprint
             # if [ ! -d .venv ]; then
             #   echo "📦 Creating Python virtual environment..."
@@ -83,7 +89,7 @@
             echo "  python scripts/blueprint.py build  - Build blueprint docs"
             echo "  python scripts/blueprint.py serve  - Serve blueprint locally"
             echo ""
-            echo "✓ Lean version: $(lean --version | head -1)"
+            echo "✓ Lean version: $(lean --version 2>/dev/null | head -1 || echo 'not found (install elan)')"
             echo "✓ Python version: $(python --version)"
             # echo "✓ Lake is available"
             # echo "✓ Leanblueprint is installed"

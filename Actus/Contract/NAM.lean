@@ -12,7 +12,7 @@ hence "negative amortizer").
 * `Prnxt` initializes to `R(CNTRL)·PRNXT` and `Md` to a redemption-count-derived
   date (supplied here via `genSchedule`).
 
-Everything else delegates to LAM.
+Everything else delegates to LAM.  Generic over the amount type `α`.
 -/
 
 import Actus.Protocol
@@ -29,59 +29,59 @@ open Actus.Abstract
 open Actus.Closures
 open Actus.Contract.Lending
 open Actus.Util.Conventions (sign)
+open Actus (Amount)
 
-abbrev Terms := Lending.Terms
-abbrev State := Lending.State
+variable {α : Type} [Amount α] [DecidableLE α]
 
 /-- Negative-amortizer principal redemption: the instalment covers accrued
     interest first; the remainder `Prnxt − Ipac_{t+}` reduces `Nt`. -/
-def stf_PR (ct : Terms) (t : Time) (s : State) : State :=
-  let accr := LAM.ipacAccrIpcb ct t s            -- Ipac_{t+}
+def stf_PR (ct : Terms α) (rf : RiskFactorEnv α) (t : Time) (s : State α) : State α :=
+  let accr := LAM.ipacAccrIpcb rf t s            -- Ipac_{t+}
   -- principal portion of the instalment, capped at the remaining notional
   let nt'  := s.nt - LAM.redeemed s.nt (s.prnxt - accr)
-  { s with ipac := accr, feac := PAM.feacNext ct t s
+  { s with ipac := accr, feac := PAM.feacNext ct rf t s
            nt   := nt'
            ipcb := match ct.interestCalculationBase with
                    | some .IPCB_NTL => s.ipcb   -- NTL: base fixed (stepped at IPCB)
                    | _              => nt'      -- NT / NTIED / none track the notional
            sd   := t }
 
-def pof_PR (ct : Terms) (rf : RiskFactorEnv) (t : Time) (s : State) : Payoff :=
-  rf.curs t * s.nsc * LAM.redeemed s.nt (s.prnxt - s.ipac - yf ct s.sd t * s.ipnr * s.ipcb)
+def pof_PR (rf : RiskFactorEnv α) (t : Time) (s : State α) : α :=
+  rf.curs t * s.nsc * LAM.redeemed s.nt (s.prnxt - s.ipac - rf.yf s.sd t * s.ipnr * s.ipcb)
 
-def stf (ct : Terms) (rf : RiskFactorEnv) (ev : EventType) (t : Time) (s : State) : State :=
+def stf (ct : Terms α) (rf : RiskFactorEnv α) (ev : EventType) (t : Time) (s : State α) : State α :=
   match ev with
-  | .PR => stf_PR ct t s
+  | .PR => stf_PR ct rf t s
   | _   => LAM.stf ct rf ev t s
 
-def pof (ct : Terms) (rf : RiskFactorEnv) (ev : EventType) (t : Time) (s : State) : Payoff :=
+def pof (ct : Terms α) (rf : RiskFactorEnv α) (ev : EventType) (t : Time) (s : State α) : α :=
   match ev with
-  | .PR => pof_PR ct rf t s
+  | .PR => pof_PR rf t s
   | _   => LAM.pof ct rf ev t s
 
 /-- Initial state: as LAM but `Prnxt = R(CNTRL)·PRNXT` (§7.4). -/
-def init (ct : Terms) (md t₀ : Time) : State :=
+def init (ct : Terms α) (md t₀ : Time) : State α :=
   { LAM.init ct md t₀ with prnxt := sign (Terms.cntrl ct) * Terms.prnxt ct }
 
-inductive Step (ct : Terms) (rf : RiskFactorEnv) : State → State → Type where
-  | ev : ∀ {s : State} (e : EventType) {t : Time}, s.sd ≤ t →
+inductive Step (ct : Terms α) (rf : RiskFactorEnv α) : State α → State α → Type where
+  | ev : ∀ {s : State α} (e : EventType) {t : Time}, s.sd ≤ t →
          Step ct rf s (stf ct rf e t s)
 
-abbrev Trace (ct : Terms) (rf : RiskFactorEnv) := Star (Step ct rf)
+abbrev Trace (ct : Terms α) (rf : RiskFactorEnv α) := Star (Step ct rf)
 
-def getCashflow (ct : Terms) (rf : RiskFactorEnv) {s s' : State}
-    (h : Step ct rf s s') : Cashflow :=
+def getCashflow (ct : Terms α) (rf : RiskFactorEnv α) {s s' : State α}
+    (h : Step ct rf s s') : Event × α :=
   match h with
   | .ev e _ => ((s'.sd, e), pof ct rf e s'.sd s)
 
-def getCashflows (ct : Terms) (rf : RiskFactorEnv) :
-    ∀ {s s' : State}, Trace ct rf s s' → Cashflows
+def getCashflows (ct : Terms α) (rf : RiskFactorEnv α) :
+    ∀ {s s' : State α}, Trace ct rf s s' → List (Event × α)
   | _, _, .refl        => []
   | _, _, .step h rest => getCashflow ct rf h :: getCashflows ct rf rest
 
-def NAM_contract : ActusContract := { Terms := Terms, State := State }
+def NAM_contract : ActusContract := { Terms := Terms Float, State := State Float }
 
-def NAM_impl (ct : Terms) (rf : RiskFactorEnv) (s₀ : State) :
+def NAM_impl (ct : Terms Float) (rf : RiskFactorEnv Float) (s₀ : State Float) :
     StateTransition NAM_contract :=
   { s₀ := s₀, rel := Step ct rf
     getCashflow := fun h r => let _ := r; getCashflow ct rf h }

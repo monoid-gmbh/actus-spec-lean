@@ -205,7 +205,7 @@ private def pEnum  (f : String → Except String α) (j : Json) : Except String 
 -- ---------------------------------------------------------------------------
 
 /-- Decode a `terms` object into `ContractTerms Float`. -/
-def termsFromJson (j : Json) : Except String Terms := do
+def termsFromJson (j : Json) : Except String (Terms Float) := do
   let contractType ← req j "contractType" (pEnum contractTypeOf)
   let contractId   ← (opt j "contractID" pStr).map (·.getD "")
   let contractRole ← req j "contractRole" (pEnum contractRoleOf)
@@ -281,7 +281,7 @@ def termsFromJson (j : Json) : Except String Terms := do
     scalingIndexAtStatusDate       := ← opt j "scalingIndexAtStatusDate" pFloat }
 
 /-- Decode a `terms` object given as a raw JSON string. -/
-def termsFromString (s : String) : Except String Terms := do
+def termsFromString (s : String) : Except String (Terms Float) := do
   termsFromJson (← Json.parse s)
 
 -- ---------------------------------------------------------------------------
@@ -318,7 +318,7 @@ private def stepLookup (obs : List (Time × Float)) (t : Time) : Float :=
 /-- Build a `RiskFactorEnv` from a test case's `dataObserved`, wiring the
     rate-reset market series (`Oʳᶠ(RRMO,·)`).  Settlement-currency factor is
     `1` (single-currency reference cases); prepayment/annuity default to none. -/
-def riskFactorsFromJson (j : Json) (ct : Terms) : Except String RiskFactorEnv := do
+def riskFactorsFromJson (j : Json) (ct : Terms Float) : Except String (RiskFactorEnv Float) := do
   let series ← parseSeries j
   let lookup := fun (moc : Option String) =>
     match moc with
@@ -349,8 +349,8 @@ structure ObservedEvent where
 /-- One `actus-tests` entry. -/
 structure TestCase where
   identifier : String
-  terms      : Terms
-  to         : Option LocalTime
+  terms      : Terms Float
+  horizon    : Option LocalTime
   events     : List ObservedEvent
 
 private def observedEventFromJson (j : Json) : Except String ObservedEvent := do
@@ -369,7 +369,7 @@ def testCaseFromJson (j : Json) : Except String TestCase := do
   pure {
     identifier := (← opt j "identifier" pStr).getD ""
     terms      := ← req j "terms" termsFromJson
-    to         := ← opt j "to" pDate
+    horizon    := ← opt j "to" pDate
     events     := events }
 
 /-- Decode a whole `actus-tests` file: a JSON object keyed by test id. -/
@@ -388,7 +388,7 @@ def testFileFromString (s : String) : Except String (List (String × TestCase)) 
 
 /-- Run the lending engine appropriate to the parsed `contractType`.  Returns
     `[]` for contract types outside the implemented lending family. -/
-def cashflowsOf (ct : Terms) (rf : RiskFactorEnv) : Cashflows :=
+def cashflowsOf (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   match ct.contractType with
   | .PAM => Actus.Contract.Lending.Execution.pamCashflows ct rf
   | .LAM => Actus.Contract.Lending.Execution.lamCashflows ct rf

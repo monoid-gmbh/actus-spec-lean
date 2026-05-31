@@ -16,12 +16,14 @@ Generated calendar times are mapped onto the `Time := Nat` event axis with
 import Actus.Protocol
 import Actus.Util.Date
 import Actus.Util.Conventions
+import Actus.Util.Amount
 
 namespace Actus.Util.Schedule
 
 open Actus.Protocol
 open Actus.Util.Date
 open Actus.Util.Conventions
+open Actus (Amount)
 
 /-- Map a calendar date onto the `Time` axis (serial day number ≥ 0). -/
 def toTime (d : LocalTime) : Time := (toEpochDay d).toNat
@@ -109,11 +111,13 @@ def arraySchedule (cfg : ScheduleConfig)
     i.e. `n + a` divided by the sum of discount factors — the formulation the
     ACTUS reference uses.  (`Σₖ` runs over the periods; the inner product is the
     discount factor to the end of period `k`.) -/
-def annuity (n a r : Float) (yfs : List Float) : Float :=
+def annuity {α : Type} [Amount α] (n a r : α) (yfs : List α) : α :=
   let (_, sumDisc) :=
-    yfs.foldl (fun (acc : Float × Float) y =>
-      let prod := acc.1 * (1.0 + r * y)      -- ∏_{j ≤ k} (1 + r·yf_j)
-      (prod, acc.2 + 1.0 / prod)) (1.0, 0.0)
-  if sumDisc == 0.0 then n + a else (n + a) / sumDisc
+    yfs.foldl (fun (acc : α × α) y =>
+      let prod := acc.1 * (1 + r * y)        -- ∏_{j ≤ k} (1 + r·yf_j)
+      (prod, acc.2 + 1 / prod)) (1, 0)
+  -- empty schedule ⇒ no discounting (denominator would be 0); otherwise the
+  -- denominator is a sum of positive discount factors, so division is safe.
+  if yfs.isEmpty then n + a else (n + a) / sumDisc
 
 end Actus.Util.Schedule

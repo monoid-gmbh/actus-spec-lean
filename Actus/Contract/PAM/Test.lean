@@ -31,25 +31,25 @@ open Actus.Contract.PAM
 -- Example contract terms: a 1000-notional bullet loan at 10%.
 -- ---------------------------------------------------------------------------
 
-def pam : Terms :=
+def pam : Terms Float :=
   { defaultTerms with
     contractRole         := .CR_RPA
     notionalPrincipal    := some 1000.0
     nominalInterestRate  := some 0.1
     premiumDiscountAtIED := some 0.0 }
 
-def rf : RiskFactorEnv := .id
+def rf : RiskFactorEnv Float := .id
 
 -- ---------------------------------------------------------------------------
 -- Relational execution trace:  init → IED → MD
 -- ---------------------------------------------------------------------------
 
 /-- Initial state (maturity at time 10, status date 0). -/
-def s0 : State := PAM.init pam 10 0
+def s0 : State Float := PAM.init pam 10 0
 /-- After the Initial Exchange at time 1. -/
-def s1 : State := PAM.stf_IED pam 1 s0
+def s1 : State Float := PAM.stf_IED pam 1 s0
 /-- After Maturity at time 2. -/
-def s2 : State := PAM.stf_MD pam 2 s1
+def s2 : State Float := PAM.stf_MD 2 s1
 
 def step₁ : PAM.Step pam rf s0 s1 := .ied (by decide)
 def step₂ : PAM.Step pam rf s1 s2 := .md (by decide)
@@ -74,14 +74,14 @@ theorem cashflows_eq :
     cashflows = [((1, .IED), PAM.pof_IED pam rf 1), ((2, .MD), PAM.pof_MD rf 2 s1)] := rfl
 
 /-- Maturity zeroes the notional (definitional). -/
-theorem md_zeroes_notional : s2.nt = 0.0 := rfl
+theorem md_zeroes_notional : s2.nt = 0 := rfl
 
 -- ---------------------------------------------------------------------------
 -- Executable pipeline: schedule generation + cashflow computation
 -- ---------------------------------------------------------------------------
 
 /-- A dated 1-year bullet loan paying interest semi-annually. -/
-def pamDated : Terms :=
+def pamDated : Terms Float :=
   { defaultTerms with
     contractRole                     := .CR_RPA
     notionalPrincipal                := some 1000.0

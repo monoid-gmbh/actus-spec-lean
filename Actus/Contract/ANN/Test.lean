@@ -16,7 +16,7 @@ namespace Actus.Contract.ANN.Test
 open Actus.Protocol
 open Actus.Contract.Lending
 
-def ann : Terms :=
+def ann : Terms Float :=
   { defaultTerms with
     contractRole                         := .CR_RPA
     notionalPrincipal                    := some 1000.0
@@ -31,10 +31,10 @@ def ann : Terms :=
 
 /-- A rate reset recomputes the next instalment as the annuity amount over the
     environment's remaining-period year fractions. -/
-theorem rr_sets_annuity (rf : RiskFactorEnv) (t : Time) (s : State) :
+theorem rr_sets_annuity (rf : RiskFactorEnv Float) (t : Time) (s : State Float) :
     (ANN.stf_RR ann rf t s).prnxt =
       ANN.annuityAmount rf t (ANN.stf_RR ann rf t s).nt
-        (LAM.ipacAccrIpcb ann t s) (ANN.stf_RR ann rf t s).ipnr := rfl
+        (LAM.ipacAccrIpcb rf t s) (ANN.stf_RR ann rf t s).ipnr := rfl
 
 #eval Lending.Execution.annCashflows ann .id
 

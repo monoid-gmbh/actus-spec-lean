@@ -23,12 +23,16 @@ namespace Actus.Contract.Lending.Agree
 
 open Actus.Protocol
 open Actus.Contract.Lending
+open Actus (Amount)
+
+variable {α : Type} [Amount α] [DecidableLE α]
 
 -- ---------------------------------------------------------------------------
 -- PAM  (per-event relational constructors)
 -- ---------------------------------------------------------------------------
 
-theorem pam_step_to_fun {ct rf} {s s' : State} (h : PAM.Step ct rf s s') :
+omit [DecidableLE α] in
+theorem pam_step_to_fun {ct rf} {s s' : State α} (h : PAM.Step ct rf s s') :
     ∃ (e : EventType) (t : Time), s' = PAM.stf ct rf e t s := by
   cases h with
   | ad _   => exact ⟨.AD,   _, rfl⟩
@@ -46,36 +50,37 @@ theorem pam_step_to_fun {ct rf} {s s' : State} (h : PAM.Step ct rf s s') :
   | sc _   => exact ⟨.SC,   _, rfl⟩
   | ce _   => exact ⟨.CE,   _, rfl⟩
 
+omit [DecidableLE α] in
 /-- Completeness for the events that have a dedicated PAM constructor.  (The
     dispatcher's catch-all events — `PD`, `STD`, `XD`, `DV` — are not part of
     the PAM schedule and have no constructor.) -/
-theorem pam_fun_to_step {ct rf} {s : State} {t : Time} (ht : s.sd ≤ t) :
-    Nonempty (PAM.Step ct rf s (PAM.stf_IP ct t s)) :=
+theorem pam_fun_to_step {ct rf} {s : State α} {t : Time} (ht : s.sd ≤ t) :
+    Nonempty (PAM.Step ct rf s (PAM.stf_IP ct rf t s)) :=
   ⟨.ip ht⟩
 
 -- ---------------------------------------------------------------------------
 -- LAM / NAM / ANN  (single dispatching constructor)
 -- ---------------------------------------------------------------------------
 
-theorem lam_step_to_fun {ct rf} {s s' : State} (h : LAM.Step ct rf s s') :
+theorem lam_step_to_fun {ct rf} {s s' : State α} (h : LAM.Step ct rf s s') :
     ∃ (e : EventType) (t : Time), s' = LAM.stf ct rf e t s := by
   cases h with | ev e _ => exact ⟨e, _, rfl⟩
 
-def lam_fun_to_step {ct rf} {s : State} (e : EventType) {t : Time}
+def lam_fun_to_step {ct rf} {s : State α} (e : EventType) {t : Time}
     (ht : s.sd ≤ t) : LAM.Step ct rf s (LAM.stf ct rf e t s) := .ev e ht
 
-theorem nam_step_to_fun {ct rf} {s s' : State} (h : NAM.Step ct rf s s') :
+theorem nam_step_to_fun {ct rf} {s s' : State α} (h : NAM.Step ct rf s s') :
     ∃ (e : EventType) (t : Time), s' = NAM.stf ct rf e t s := by
   cases h with | ev e _ => exact ⟨e, _, rfl⟩
 
-def nam_fun_to_step {ct rf} {s : State} (e : EventType) {t : Time}
+def nam_fun_to_step {ct rf} {s : State α} (e : EventType) {t : Time}
     (ht : s.sd ≤ t) : NAM.Step ct rf s (NAM.stf ct rf e t s) := .ev e ht
 
-theorem ann_step_to_fun {ct rf} {s s' : State} (h : ANN.Step ct rf s s') :
+theorem ann_step_to_fun {ct rf} {s s' : State α} (h : ANN.Step ct rf s s') :
     ∃ (e : EventType) (t : Time), s' = ANN.stf ct rf e t s := by
   cases h with | ev e _ => exact ⟨e, _, rfl⟩
 
-def ann_fun_to_step {ct rf} {s : State} (e : EventType) {t : Time}
+def ann_fun_to_step {ct rf} {s : State α} (e : EventType) {t : Time}
     (ht : s.sd ≤ t) : ANN.Step ct rf s (ANN.stf ct rf e t s) := .ev e ht
 
 end Actus.Contract.Lending.Agree
