@@ -14,6 +14,14 @@ specification, covering the core lending family of contract types
 inductive \texttt{Step}, the readable spec) and functionally (computable
 state-transition and payoff functions), with the two proven to agree.
 
+The whole development is generic over the amount type and instantiated twice:
+at \texttt{Float} for the executable engine (validated against the ACTUS
+reference suite), and at the real numbers $\mathbb{R}$ for the quantitative
+metatheorems below.  The order/field structure those bounds need exists over
+$\mathbb{R}$ but not over \texttt{Float} (where $\mathtt{NaN}$ even breaks
+$a \le a$), so they are genuine theorems over $\mathbb{R}$ rather than empirical
+checks.
+
 \section{Utility layer}
 
 \begin{definition}[Contract Role Sign $R$]\label{def:sign}
@@ -101,4 +109,75 @@ state-transition and payoff functions), with the two proven to agree.
         \leanok
         The maturity event zeroes the notional principal (and accrued interest
         and fees); termination additionally zeroes the interest rate.
+\end{theorem}
+
+\subsection{Quantitative bounds and conservation (over $\mathbb{R}$)}
+
+\begin{theorem}[Rate cap/floor bound]\label{thm:rate-bound}
+        \lean{Actus.Contract.Lending.Properties.pam_rr_rate_mem,
+              Actus.Contract.Lending.Properties.ann_rr_rate_mem,
+              Actus.Contract.Lending.Properties.clamp_mem}
+        \uses{def:pam-stf, def:amortizers}
+        \leanok
+        After a rate reset the nominal rate lies within the life floor/cap
+        window $[\mathtt{RRLF}, \mathtt{RRLC}]$ (whenever both are present and
+        well-ordered).  Holds for PAM and, by reuse of PAM's rate logic, for
+        ANN.  With every cap/floor absent the reset instead returns the raw
+        repricing target $O^{rf}(\mathtt{RRMO},t)\cdot\mathtt{RRMLT}+\mathtt{RRSP}$
+        (\texttt{pam\_rr\_uncapped}).
+\end{theorem}
+
+\begin{theorem}[Redemption non-overshoot]\label{thm:no-overshoot}
+        \lean{Actus.Contract.Lending.Properties.redeemed_no_overshoot,
+              Actus.Contract.Lending.Properties.lam_pr_nt_mem,
+              Actus.Contract.Lending.Properties.redeemed_abs_le}
+        \uses{def:amortizers}
+        \leanok
+        A principal redemption never overshoots: with a sign-normalised
+        nonnegative state the post-redemption notional stays in $[0, \mathtt{Nt}]$,
+        and the redeemed amount never exceeds the outstanding notional in
+        magnitude ($|\,\mathrm{redeemed}\,| \le |\mathtt{Nt}|$).
+\end{theorem}
+
+\begin{theorem}[Strict amortization and full repayment]\label{thm:amortization}
+        \lean{Actus.Contract.Lending.Properties.lam_pr_nt_lt,
+              Actus.Contract.Lending.Properties.lam_pr_full_repay}
+        \uses{thm:no-overshoot}
+        \leanok
+        With a strictly positive notional and instalment a redemption strictly
+        decreases the notional (guaranteed progress); once the instalment
+        reaches the outstanding notional the step drives it to exactly $0$
+        (clean repayment).
+\end{theorem}
+
+\begin{theorem}[Interest capitalization conserves value]\label{thm:ipci}
+        \lean{Actus.Contract.Lending.Properties.pam_ipci_capitalizes}
+        \uses{def:pam-stf}
+        \leanok
+        The \texttt{IPCI} event moves accrued interest into the notional and
+        resets accrued interest to $0$: value is relocated, not created.  (This
+        one holds definitionally at any amount type.)
+\end{theorem}
+
+\begin{definition}[Principal-redemption trace]\label{def:prtrace}
+        \lean{Actus.Contract.Lending.Properties.PRTrace}
+        \uses{def:amortizers}
+        \leanok
+        \texttt{PRTrace} is the sub-relation of the LAM execution trace
+        consisting of zero or more admissible principal-redemption (\texttt{PR})
+        steps --- the regime in which the notional should be conserved (events
+        like \texttt{IED}/\texttt{IPCI} reset or grow it).
+\end{definition}
+
+\begin{theorem}[Trace-level conservation of the notional]\label{thm:conservation}
+        \lean{Actus.Contract.Lending.Properties.prTrace_nt_mem,
+              Actus.Contract.Lending.Properties.prTrace_abs_le,
+              Actus.Contract.Lending.Properties.prTrace_isTrace}
+        \uses{def:prtrace, thm:no-overshoot}
+        \leanok
+        Along an entire principal-redemption trace the notional stays in
+        $[0, \mathtt{Nt}_0]$ and never increases in magnitude --- the
+        single-step non-overshoot lifted to whole executions by induction over
+        the trace.  Every \texttt{PRTrace} is moreover a genuine LAM execution
+        trace, so this is a statement about real runs.
 \end{theorem}
