@@ -26,7 +26,7 @@ import Actus.Util.DayCount
 import Actus.Util.Conventions
 import Actus.Util.Amount
 
-namespace Actus.Contract.Lending
+namespace Actus.Contract
 
 open Actus.Protocol
 open Actus.Util
@@ -36,7 +36,7 @@ open Actus (Amount)
 -- Terms
 -- ---------------------------------------------------------------------------
 
-/-- Lending-family contract terms = the dictionary `ContractTerms` over `α`. -/
+/-- Shared contract terms = the dictionary `ContractTerms` over `α`. -/
 abbrev Terms (α : Type) := ContractTerms α
 
 /-- A blank `Float` contract: every optional attribute undefined, sensible
@@ -77,6 +77,7 @@ def defaultTerms : Terms Float where
   amortizationDate := none
   exerciseDate     := none
   notionalPrincipal                    := none
+  notionalPrincipal2                   := none
   premiumDiscountAtIED                 := none
   cycleAnchorDateOfPrincipalRedemption := none
   cycleOfPrincipalRedemption           := none
@@ -167,7 +168,7 @@ def clampLo {α : Type} [Amount α] (fl : Option α) (x : α) : α :=
 -- State
 -- ---------------------------------------------------------------------------
 
-/-- Lending-family state variables (ACTUS dictionary short names).  `Md`/`Sd`
+/-- Shared contract state variables (ACTUS dictionary short names).  `Md`/`Sd`
     are serial day numbers on the `Time` axis; the monetary/rate variables have
     the generic amount type `α`. -/
 structure State (α : Type) where
@@ -241,4 +242,4 @@ def scalesNotional : ScalingEffect → Bool
 def yf (ct : Terms Float) (s t : Time) : Float :=
   DayCount.yearFraction (Terms.dcc ct) (Date.ofEpochDay s) (Date.ofEpochDay t)
 
-end Actus.Contract.Lending
+end Actus.Contract

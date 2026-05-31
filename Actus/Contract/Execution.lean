@@ -21,18 +21,18 @@ with `Execution.runSchedule`, giving the full executable pipeline.
 import Actus.Protocol
 import Actus.Execution
 import Actus.Util.Schedule
-import Actus.Contract.Lending.Common
+import Actus.Contract.Common
 import Actus.Contract.PAM
 import Actus.Contract.LAM
 import Actus.Contract.NAM
 import Actus.Contract.ANN
 import Actus.Contract.CLM
 
-namespace Actus.Contract.Lending.Execution
+namespace Actus.Contract.Execution
 
 open Actus.Protocol
 open Actus.Util
-open Actus.Contract.Lending
+open Actus.Contract
 
 /-- Map a calendar date to the `Time` axis. -/
 def toTime (d : LocalTime) : Time := Schedule.toTime d
@@ -64,7 +64,7 @@ def cyclicTimes (cfg : ScheduleConfig) (anchor : Option LocalTime)
     — the redemption-count-derived `t⁻ + ⌈NT/PRNXT⌉·PRCL` (§7.2 `Md` init),
     where `t⁻` is the principal-redemption anchor (or `IED + PRCL`).  This is the
     LAM formula; NAM/ANN's interest-adjusted period count is approximated by it. -/
-def maturityOf (ct : Lending.Terms Float) : Option LocalTime :=
+def maturityOf (ct : Terms Float) : Option LocalTime :=
   match ct.maturityDate with
   | some d => some d
   | none =>
@@ -101,7 +101,7 @@ def maturityOf (ct : Lending.Terms Float) : Option LocalTime :=
     principal-redemption cycle (LAM/NAM/ANN).  `mEOD`/`tEOD` mark the maturity /
     termination as end-of-day (`23:59:59`): the structure uses the written date,
     but those settlement events are rolled to the next midnight. -/
-def genSchedule (ct : Lending.Terms Float) (includePR : Bool)
+def genSchedule (ct : Terms Float) (includePR : Bool)
     (mEOD : Bool := false) (tEOD : Bool := false) : Schedule :=
   let cfg := ct.scheduleConfig
   let ied := ct.initialExchangeDate
@@ -179,10 +179,10 @@ def genSchedule (ct : Lending.Terms Float) (includePR : Bool)
   (events.toArray.qsort lt).toList
 
 /-- Maturity date on the `Time` axis (0 if it cannot be determined). -/
-def mdTime (ct : Lending.Terms Float) : Time := ((maturityOf ct).map toTime).getD 0
+def mdTime (ct : Terms Float) : Time := ((maturityOf ct).map toTime).getD 0
 
 /-- Status date on the `Time` axis. -/
-def sdTime (ct : Lending.Terms Float) : Time := toTime ct.statusDate
+def sdTime (ct : Terms Float) : Time := toTime ct.statusDate
 
 -- ---------------------------------------------------------------------------
 -- End-to-end cashflow generation, per contract
@@ -199,7 +199,7 @@ def remapSettlement (cfg : ScheduleConfig) (cfs : Cashflows) : Cashflows :=
 /-- When the contract is purchased mid-life, the analyzing party's cash flows
     start at the purchase date: drop everything strictly before it (the state
     still evolved through those events, but they belong to the seller). -/
-def afterPurchase (ct : Lending.Terms Float) (cfs : Cashflows) : Cashflows :=
+def afterPurchase (ct : Terms Float) (cfs : Cashflows) : Cashflows :=
   match ct.purchaseDate with
   | some pd =>
     let p := toTime pd
@@ -209,7 +209,7 @@ def afterPurchase (ct : Lending.Terms Float) (cfs : Cashflows) : Cashflows :=
       Nat.blt p t || (t == p && eventTypePriority e == eventTypePriority .PRD)
   | none    => cfs
 
-def pamCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+def pamCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   let rf := { rf with yf := fun a b => yf ct a b }   -- supply the day-count year fraction
   remapSettlement ct.scheduleConfig <| afterPurchase ct <|
     Execution.runSchedule (PAM.stf ct rf) (PAM.pof ct rf)
@@ -222,20 +222,20 @@ private def numPR (sched : Schedule) : Nat :=
 /-- Initial LAM state.  Applies the contract-role sign to `Prnxt`, and when
     `PRNXT` is absent sizes the linear instalment as `NT / (#PR + 1)` (the `+1`
     for the maturity redemption). -/
-def lamInit (ct : Lending.Terms Float) : State Float :=
+def lamInit (ct : Terms Float) : State Float :=
   let s0   := LAM.init ct (mdTime ct) (sdTime ct)
   let base := match ct.nextPrincipalRedemptionPayment with
     | some _ => Terms.prnxt ct
     | none   => Terms.nt ct / Float.ofNat (numPR (genSchedule ct true) + 1)
   { s0 with prnxt := Conventions.sign (Terms.cntrl ct) * base }
 
-def lamCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+def lamCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   let rf := { rf with yf := fun a b => yf ct a b }
   remapSettlement ct.scheduleConfig <| afterPurchase ct <|
     Execution.runSchedule (LAM.stf ct rf) (LAM.pof ct rf)
       (lamInit ct) (genSchedule ct true rf.maturityEOD rf.terminationEOD)
 
-def namCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+def namCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   let rf := { rf with yf := fun a b => yf ct a b }
   remapSettlement ct.scheduleConfig <| afterPurchase ct <|
     Execution.runSchedule (NAM.stf ct rf) (NAM.pof ct rf)
@@ -244,12 +244,12 @@ def namCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflo
 /-- The annuity amortization horizon: the `amortizationDate` if given, else the
     maturity.  The instalment amortizes to here even when an earlier
     `maturityDate` ends the contract with a balloon. -/
-def annHorizon (ct : Lending.Terms Float) : Option LocalTime :=
+def annHorizon (ct : Terms Float) : Option LocalTime :=
   ct.amortizationDate.orElse fun _ => maturityOf ct
 
-def annHorizonT (ct : Lending.Terms Float) : Time := ((annHorizon ct).map toTime).getD (mdTime ct)
+def annHorizonT (ct : Terms Float) : Time := ((annHorizon ct).map toTime).getD (mdTime ct)
 
-def annInit (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : State Float :=
+def annInit (ct : Terms Float) (rf : RiskFactorEnv Float) : State Float :=
   let s0 := ANN.init ct (mdTime ct) (sdTime ct)
   match ct.nextPrincipalRedemptionPayment with
   | some _ => s0
@@ -284,7 +284,7 @@ def annInit (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : State Float 
     (`RR`/`RRF`) it re-amortizes — recomputing `Prnxt` as the annuity over the
     *remaining* redemption schedule (the `PR` dates after the reset, then `MD`)
     at the new rate, so total instalments stay constant within each rate regime. -/
-def annRun (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) (mdT : Time) :
+def annRun (ct : Terms Float) (rf : RiskFactorEnv Float) (mdT : Time) :
     State Float → Schedule → Cashflows
   | _, []             => []
   | s, (t, e) :: rest =>
@@ -305,7 +305,7 @@ def annRun (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) (mdT : Time) :
       else s'
     cf :: annRun ct rf mdT s'' rest
 
-def annCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+def annCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   let rf := { rf with yf := fun a b => yf ct a b }
   remapSettlement ct.scheduleConfig <| afterPurchase ct <|
     annRun ct rf (annHorizonT ct) (annInit ct rf) (genSchedule ct true rf.maturityEOD rf.terminationEOD)
@@ -319,7 +319,7 @@ def annCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflo
 /-- CLM event schedule for a defined-maturity contract: IED, interest-cycle
     `IPCI` strictly before MD, rate resets, then the final `IP` and `MD` at
     maturity. -/
-def genScheduleCLM (ct : Lending.Terms Float) (mEOD : Bool := false) : Schedule :=
+def genScheduleCLM (ct : Terms Float) (mEOD : Bool := false) : Schedule :=
   let cfg := ct.scheduleConfig
   let ied := ct.initialExchangeDate
   match ct.maturityDate with
@@ -352,7 +352,7 @@ def genScheduleCLM (ct : Lending.Terms Float) (mEOD : Bool := false) : Schedule 
       else Nat.blt a.1 b.1
     (events.toArray.qsort lt).toList
 
-def clmCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+def clmCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   let rf := { rf with yf := fun a b => yf ct a b }
   remapSettlement ct.scheduleConfig <| afterPurchase ct <|
     Execution.runSchedule (CLM.stf ct rf) (CLM.pof ct rf)
@@ -379,7 +379,7 @@ private def sortCF (cfs : Cashflows) : Cashflows :=
 
 /-- COM: a commodity position.  Purchase pays `−R·quantity·priceAtPurchase`;
     termination receives `R·quantity·priceAtTermination`. -/
-def comCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+def comCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   let s   := Conventions.sign (α := Float) ct.contractRole
   let qty := ct.quantity.getD 0
   let tdRoll := if rf.terminationEOD then 1 else 0   -- 23:59:59 settles next midnight
@@ -392,7 +392,7 @@ def comCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflo
 
 /-- STK: an equity position.  Purchase pays `−R·priceAtPurchase`; termination
     receives `R·priceAtTermination`; each observed dividend pays `R·amount`. -/
-def stkCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+def stkCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   let s   := Conventions.sign (α := Float) ct.contractRole
   let prd := (ct.purchaseDate.map fun d =>
                 [((toTime d, EventType.PRD), -s * Terms.pprd ct)]).getD []
@@ -408,7 +408,7 @@ def stkCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflo
     call, `max(K−S, 0)` for a put, where `S` is the underlying's observed price
     (the `UDL` market-object code) at maturity and `K = optionStrike1`.  The
     zero-valued `MD`/`XD` markers are dropped by the cash filter. -/
-def optnsCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+def optnsCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   let s   := Conventions.sign (α := Float) ct.contractRole
   let prd := (ct.purchaseDate.map fun d =>
                 [((toTime d, EventType.PRD), -s * Terms.pprd ct)]).getD []
@@ -432,12 +432,75 @@ def optnsCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashf
   let sdT := toTime ct.statusDate
   sortCF ((prd ++ std).filter (fun c => Nat.ble sdT c.1.1))
 
+/-- FUTUR — a cash-settled future on an underlying.  Premium/price paid at
+    `PRD`; at maturity the linear payoff settles (`STD`): `sign·(S − F)`, where
+    `S` is the underlying's observed price (the `UDL` market-object code) at
+    maturity and `F = futuresPrice`.  Like OPTNS but with a linear (not
+    max-clamped) payoff; settlement honours `settlementPeriod` + the BDC. -/
+def futurCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+  let s   := Conventions.sign (α := Float) ct.contractRole
+  let prd := (ct.purchaseDate.map fun d =>
+                [((toTime d, EventType.PRD), -s * Terms.pprd ct)]).getD []
+  let std := match ct.maturityDate with
+    | none    => []
+    | some md =>
+      let mdT := toTime md
+      let f   := ct.futuresPrice.getD 0
+      let moc := (ct.contractStructure.getD []).findSome? fun
+        | .mk (.referenceId m) .UDL _ => some m
+        | _                            => none
+      let sT  := match moc with | some m => rf.marketRateOf m mdT | none => 0
+      let stdT := match ct.settlementPeriod with
+        | some c => toTime (bdcShift ct.scheduleConfig (Date.addPeriod md c.n c.period))
+        | none   => mdT
+      [((stdT, EventType.STD), s * (sT - f))]
+  let sdT := toTime ct.statusDate
+  sortCF ((prd ++ std).filter (fun c => Nat.ble sdT c.1.1))
+
+/-- FXOUT — an FX outright (forward exchange of two currency notionals).
+    *Delivery* (`deliverySettlement ≠ "S"`): at maturity exchange the two
+    notionals — `MD` flows `sign·Nt1` and `−sign·Nt2`.  *Cash* (`"S"`): a single
+    net `STD = sign·(Nt1 − fx·Nt2)` at maturity + `settlementPeriod`, where `fx`
+    is the observed `currency2/currency` rate at maturity. -/
+def fxoutCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+  match ct.maturityDate with
+  | none    => []
+  | some md =>
+    let s    := Conventions.sign (α := Float) ct.contractRole
+    let mdT  := toTime md + (if rf.maturityEOD then 1 else 0)
+    let nt1  := Terms.nt ct
+    let nt2  := ct.notionalPrincipal2.getD 0
+    let base := match ct.deliverySettlement with
+      | some "S" =>
+        let fxMOC := (ct.currency2.getD "") ++ "/" ++ (ct.currency.getD "")
+        let rate  := rf.marketRateOf fxMOC (toTime md)
+        -- settlement runs `settlementPeriod` after the (EOD-rolled) maturity
+        let stdT  := match ct.settlementPeriod with
+          | some c => toTime (bdcShift ct.scheduleConfig (Date.addPeriod (Date.ofEpochDay mdT) c.n c.period))
+          | none   => mdT
+        [((stdT, EventType.STD), s * (nt1 - rate * nt2))]
+      | _ =>
+        [((mdT, EventType.MD), s * nt1), ((mdT, EventType.MD), -s * nt2)]
+    -- termination ends the contract early: drop the maturity exchange, settle TD
+    -- (the termination price is received regardless of contract role)
+    let flows := match ct.terminationDate with
+      | some td => let tdT := toTime td + (if rf.terminationEOD then 1 else 0)
+                   (base.filter (fun c => Nat.ble c.1.1 tdT)) ++ [((tdT, EventType.TD), Terms.ptd ct)]
+      | none    => base
+    -- purchase mid-life: drop pre-purchase flows, settle PRD
+    let flows := match ct.purchaseDate with
+      | some pd => let pT := toTime pd + (if rf.purchaseEOD then 1 else 0)
+                   afterPurchase ct (((pT, EventType.PRD), -s * Terms.pprd ct) :: flows)
+      | none    => flows
+    let sdT := toTime ct.statusDate
+    sortCF (flows.filter (fun c => Nat.ble sdT c.1.1))
+
 -- ---------------------------------------------------------------------------
 -- SWAPS — a composite of two child legs; its cash flows are the legs'.
 -- ---------------------------------------------------------------------------
 
 /-- Cash flows of a single (child) contract, dispatched on its type. -/
-def legCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+def legCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   match ct.contractType with
   | .PAM => pamCashflows ct rf
   | .LAM => lamCashflows ct rf
@@ -453,7 +516,7 @@ def legCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflo
     (`S`) sums same-`(date, event-type)` flows.  A parent `terminationDate`
     truncates the combined flows and settles `TD`; a parent `purchaseDate` drops
     pre-purchase flows and settles `PRD` (both at the parent's clean price). -/
-def swapsCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+def swapsCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   match ct.contractStructure with
   | some legs =>
     let s : Float := Conventions.sign (α := Float) ct.contractRole
@@ -496,4 +559,4 @@ def swapsCashflows (ct : Lending.Terms Float) (rf : RiskFactorEnv Float) : Cashf
     sortCF combined
   | none => []
 
-end Actus.Contract.Lending.Execution
+end Actus.Contract.Execution

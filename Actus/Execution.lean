@@ -8,7 +8,7 @@ and collects the resulting `Cashflows`.
 
 This replaces the previous `sorry` stubs.  Contract-specific *schedule
 generation* (which events fire, and when) lives next to each contract family;
-for the lending family see `Actus.Contract.Lending.Execution`.
+for the lending family see `Actus.Contract.Execution`.
 -/
 
 import Actus.Protocol

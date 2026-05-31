@@ -18,7 +18,7 @@ Everything else delegates to LAM.  Generic over the amount type `α`.
 import Actus.Protocol
 import Actus.Abstract
 import Actus.Closures
-import Actus.Contract.Lending.Common
+import Actus.Contract.Common
 import Actus.Contract.LAM
 import Actus.Util.Conventions
 
@@ -27,7 +27,7 @@ namespace Actus.Contract.NAM
 open Actus.Protocol
 open Actus.Abstract
 open Actus.Closures
-open Actus.Contract.Lending
+open Actus.Contract
 open Actus.Util.Conventions (sign)
 open Actus (Amount)
 

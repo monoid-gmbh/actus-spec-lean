@@ -17,16 +17,16 @@ This module gives PAM **both** models the user asked for, written once and
   by LAM/NAM/ANN (the "Same as PAM" / `STF_X_PAM()` table entries).
 * a *relational* model — the inductive `Step`, the readable spec, whose every
   constructor concludes `Step s (stf_X …)`.  The two are proven to agree in
-  `Actus.Contract.Lending.Agree`.
+  `Actus.Contract.Agree`.
 
 Convention helpers `sign`, the year fraction `Y` (via `RiskFactorEnv.yf`) and
-fee/interest accrual are shared via `Actus.Contract.Lending.Common`.
+fee/interest accrual are shared via `Actus.Contract.Common`.
 -/
 
 import Actus.Protocol
 import Actus.Abstract
 import Actus.Closures
-import Actus.Contract.Lending.Common
+import Actus.Contract.Common
 import Actus.Util.Conventions
 
 namespace Actus.Contract.PAM
@@ -34,7 +34,7 @@ namespace Actus.Contract.PAM
 open Actus.Protocol
 open Actus.Abstract
 open Actus.Closures
-open Actus.Contract.Lending
+open Actus.Contract
 open Actus.Util.Conventions (sign)
 open Actus (Amount)
 

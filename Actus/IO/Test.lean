@@ -10,7 +10,7 @@ import Actus.IO.Parse
 namespace Actus.IO.Test
 
 open Actus.Protocol
-open Actus.Contract.Lending
+open Actus.Contract
 open Actus.IO.Parse
 
 /-- A reference-style test file: one PAM contract keyed by `"pam01"`. -/

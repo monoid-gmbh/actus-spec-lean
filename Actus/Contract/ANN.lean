@@ -21,7 +21,7 @@ annuity present value needs a decidable equality (zero-denominator guard).
 import Actus.Protocol
 import Actus.Abstract
 import Actus.Closures
-import Actus.Contract.Lending.Common
+import Actus.Contract.Common
 import Actus.Contract.NAM
 import Actus.Util.Schedule
 
@@ -30,7 +30,7 @@ namespace Actus.Contract.ANN
 open Actus.Protocol
 open Actus.Abstract
 open Actus.Closures
-open Actus.Contract.Lending
+open Actus.Contract
 open Actus.Util
 open Actus (Amount)
 

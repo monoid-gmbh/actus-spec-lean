@@ -23,7 +23,7 @@ by `Float` (computably) and `ℝ` (classically, for the spec).
 import Actus.Protocol
 import Actus.Abstract
 import Actus.Closures
-import Actus.Contract.Lending.Common
+import Actus.Contract.Common
 import Actus.Contract.PAM
 import Actus.Util.Conventions
 
@@ -32,7 +32,7 @@ namespace Actus.Contract.LAM
 open Actus.Protocol
 open Actus.Abstract
 open Actus.Closures
-open Actus.Contract.Lending
+open Actus.Contract
 open Actus.Util.Conventions (sign)
 open Actus (Amount)
 

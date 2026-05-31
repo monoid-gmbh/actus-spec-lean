@@ -13,7 +13,7 @@ numeric operations bundled here, and then instantiated at two types:
 
 `Amount` carries only **operations**, no axioms — which is exactly why both
 `Float` and `ℝ` are instances.  The *laws* live in `ℝ`'s Mathlib structure and
-are used directly in `Actus.Contract.Lending.Properties`; `Float` is (correctly)
+are used directly in `Actus.Contract.Properties`; `Float` is (correctly)
 *not* expected to satisfy them.
 -/
 

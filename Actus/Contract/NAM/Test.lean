@@ -6,14 +6,14 @@ remainder reduces principal.  Same terms as the LAM example, but redemption is
 interest-first, so the principal balance falls more slowly.
 -/
 
-import Actus.Contract.Lending.Common
-import Actus.Contract.Lending.Execution
+import Actus.Contract.Common
+import Actus.Contract.Execution
 import Actus.Contract.NAM
 
 namespace Actus.Contract.NAM.Test
 
 open Actus.Protocol
-open Actus.Contract.Lending
+open Actus.Contract
 
 def nam : Terms Float :=
   { defaultTerms with
@@ -33,6 +33,6 @@ def nam : Terms Float :=
 theorem pr_principal_portion (rf : RiskFactorEnv Float) (t : Time) (s : State Float) :
     (NAM.stf_PR nam rf t s).nt = s.nt - LAM.redeemed s.nt (s.prnxt - LAM.ipacAccrIpcb rf t s) := rfl
 
-#eval Lending.Execution.namCashflows nam .id
+#eval Execution.namCashflows nam .id
 
 end Actus.Contract.NAM.Test

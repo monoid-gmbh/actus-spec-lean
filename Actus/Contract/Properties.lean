@@ -26,15 +26,15 @@ are genuine theorems over the ordered field `ℝ`:
   above its previous magnitude — the notional stays in `[0, Nt]`.
 -/
 
-import Actus.Contract.Lending.Agree
+import Actus.Contract.Agree
 import Actus.Closures
 import Mathlib.Tactic.Ring
 
-namespace Actus.Contract.Lending.Properties
+namespace Actus.Contract.Properties
 
 open Actus.Protocol
 open Actus.Closures
-open Actus.Contract.Lending
+open Actus.Contract
 open Actus.Util.Conventions (sign)
 open Actus (Amount)
 
@@ -443,4 +443,4 @@ theorem prTrace_isTrace {ct : Terms ℝ} {rf : RiskFactorEnv ℝ} {s s' : State 
       obtain ⟨tr⟩ := ih
       exact ⟨.step (LAM.Step.ev .PR ht) tr⟩
 
-end Actus.Contract.Lending.Properties
+end Actus.Contract.Properties

@@ -20,7 +20,7 @@ import Actus.IO.Parse
 
 open Lean (Json)
 open Actus.Protocol
-open Actus.Contract.Lending
+open Actus.Contract
 open Actus.IO.Parse
 
 namespace Actus.IO.Conformance
@@ -115,12 +115,12 @@ private def runFile (dir : System.FilePath) (fname : String) : IO Tally := do
       | .ok tc =>
         total := total + 1
         let rf := (riskFactorsFromJson kv.2 tc.terms).toOption.getD {}
-        let horizon := tc.horizon.map Actus.Contract.Lending.Execution.toTime
+        let horizon := tc.horizon.map Actus.Contract.Execution.toTime
         let inHorizon := fun (t : Time) =>
           match horizon with | some h => t ≤ h | none => true
         let expected : List CF :=
           tc.events.filterMap fun ev =>
-            let key := (Actus.Contract.Lending.Execution.toTime ev.time, ev.type)
+            let key := (Actus.Contract.Execution.toTime ev.time, ev.type)
             let c : CF := (key, ev.payoff)
             if isCash c && inHorizon key.1 then some c else none
         let computed : List CF :=
@@ -145,15 +145,17 @@ open Actus.IO.Conformance in
 /-- Entry point (top-level `main` for the `conformance` executable). -/
 def main (args : List String) : IO UInt32 := do
   let dir : System.FilePath := args.head?.getD "actus-tests"
-  IO.println s!"ACTUS conformance — lending family (tolerance {tol})"
+  IO.println s!"ACTUS conformance (tolerance {tol})"
   IO.println s!"reading from: {dir}"
   -- Gated suite = the fully-conformant types: the lending family (PAM/LAM/NAM/
-  -- ANN), COM (4/4), STK (10/10), and OPTNS (23/23, European cash-settled).
-  -- Still partial / ungated: CLM (defined maturity, 10/15) and SWAPS (10/11 —
-  -- only swaps06, an ANN-maturity-derivation precision edge, remains).
+  -- ANN), COM (4/4), STK (10/10), OPTNS (23/23), FUTUR (14/14), FXOUT (12/12),
+  -- CSH (4/4).  Still partial / ungated: CLM (defined maturity, 10/15) and
+  -- SWAPS (10/11 — one ANN-maturity-derivation precision edge).
   let files := ["actus-tests-pam.json", "actus-tests-lam.json",
                 "actus-tests-nam.json", "actus-tests-ann.json",
-                "actus-tests-com.json", "actus-tests-stk.json", "actus-tests-optns.json"]
+                "actus-tests-com.json", "actus-tests-stk.json",
+                "actus-tests-optns.json", "actus-tests-futur.json",
+                "actus-tests-fxout.json", "actus-tests-csh.json"]
   let mut g : Tally := {}
   for f in files do
     g := g + (← runFile dir f)

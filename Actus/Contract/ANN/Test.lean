@@ -7,14 +7,14 @@ function `A` (§3.8) using the remaining-period year fractions in
 `RiskFactorEnv.annuityYfs`.
 -/
 
-import Actus.Contract.Lending.Common
-import Actus.Contract.Lending.Execution
+import Actus.Contract.Common
+import Actus.Contract.Execution
 import Actus.Contract.ANN
 
 namespace Actus.Contract.ANN.Test
 
 open Actus.Protocol
-open Actus.Contract.Lending
+open Actus.Contract
 
 def ann : Terms Float :=
   { defaultTerms with
@@ -36,6 +36,6 @@ theorem rr_sets_annuity (rf : RiskFactorEnv Float) (t : Time) (s : State Float) 
       ANN.annuityAmount rf t (ANN.stf_RR ann rf t s).nt
         (LAM.ipacAccrIpcb rf t s) (ANN.stf_RR ann rf t s).ipnr := rfl
 
-#eval Lending.Execution.annCashflows ann .id
+#eval Execution.annCashflows ann .id
 
 end Actus.Contract.ANN.Test

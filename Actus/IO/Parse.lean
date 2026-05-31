@@ -29,14 +29,14 @@ Number values may be JSON numbers *or* strings (the reference suite uses both);
 
 import Lean.Data.Json
 import Actus.Protocol
-import Actus.Contract.Lending.Common
-import Actus.Contract.Lending.Execution
+import Actus.Contract.Common
+import Actus.Contract.Execution
 
 namespace Actus.IO.Parse
 
 open Lean (Json JsonNumber)
 open Actus.Protocol
-open Actus.Contract.Lending
+open Actus.Contract
 
 -- ---------------------------------------------------------------------------
 -- Scalar decoders
@@ -102,7 +102,8 @@ private def enum (what : String) (table : List (String × α)) (s : String) :
 def contractTypeOf : String → Except String ContractType := enum "contractType"
   [("PAM", .PAM), ("LAM", .LAM), ("NAM", .NAM), ("ANN", .ANN), ("STK", .STK),
    ("OPTNS", .OPTNS), ("FUTUR", .FUTUR), ("COM", .COM), ("CSH", .CSH),
-   ("CLM", .CLM), ("SWPPV", .SWPPV), ("SWAPS", .SWAPS), ("CEG", .CEG), ("CEC", .CEC)]
+   ("CLM", .CLM), ("SWPPV", .SWPPV), ("SWAPS", .SWAPS), ("CEG", .CEG), ("CEC", .CEC),
+   ("FXOUT", .FXOUT)]
 
 def contractRoleOf : String → Except String ContractRole := enum "contractRole"
   [("RPA", .CR_RPA), ("RPL", .CR_RPL), ("CLO", .CR_CLO), ("CNO", .CR_CNO),
@@ -126,7 +127,8 @@ def bdcOf : String → Except String BusinessDayConvention := enum "businessDayC
    ("CSMP", .BDC_CSMP)]
 
 def calendarOf : String → Except String Calendar := enum "calendar"
-  [("MF", .CLDR_MF), ("NC", .CLDR_NC)]
+  [("MF", .CLDR_MF), ("NC", .CLDR_NC), ("NOCALENDAR", .CLDR_NC),
+   ("MONDAYTOFRIDAY", .CLDR_MF)]
 
 def referenceRoleOf : String → Except String ReferenceRole := enum "referenceRole"
   [("FIL", .FIL), ("SEL", .SEL), ("MOC", .MOC), ("UDL", .UDL)]
@@ -302,6 +304,9 @@ partial def termsFromJson (j : Json) : Except String (Terms Float) := do
     optionStrike1                  := ← opt j "optionStrike1" pFloat
     optionType                     := ← opt j "optionType" pStr
     optionExerciseType             := ← opt j "optionExerciseType" pStr
+    futuresPrice                   := ← opt j "futuresPrice" pFloat
+    notionalPrincipal2             := ← opt j "notionalPrincipal2" pFloat
+    currency2                      := ← opt j "currency2" pStr
     settlementPeriod               := ← opt j "settlementPeriod" pCycle
     contractStructure              := contractStructure
     deliverySettlement             := ← opt j "deliverySettlement" pStr }
@@ -331,7 +336,7 @@ private def parseSeries (j : Json) : Except String (List (String × List (Time �
       let obs ← data.toList.mapM fun e => do
         let t ← reqAny e ["timestamp", "time"] pDate
         let v ← reqAny e ["value"] pFloat
-        pure (Actus.Contract.Lending.Execution.toTime t, v)
+        pure (Actus.Contract.Execution.toTime t, v)
       pure (kv.1, obs)
   | some _ => .error "dataObserved must be an object"
 
@@ -421,15 +426,18 @@ def testFileFromString (s : String) : Except String (List (String × TestCase)) 
     `[]` for contract types outside the implemented lending family. -/
 def cashflowsOf (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   match ct.contractType with
-  | .PAM => Actus.Contract.Lending.Execution.pamCashflows ct rf
-  | .LAM => Actus.Contract.Lending.Execution.lamCashflows ct rf
-  | .NAM => Actus.Contract.Lending.Execution.namCashflows ct rf
-  | .ANN => Actus.Contract.Lending.Execution.annCashflows ct rf
-  | .CLM => Actus.Contract.Lending.Execution.clmCashflows ct rf
-  | .SWAPS => Actus.Contract.Lending.Execution.swapsCashflows ct rf
-  | .COM => Actus.Contract.Lending.Execution.comCashflows ct rf
-  | .STK => Actus.Contract.Lending.Execution.stkCashflows ct rf
-  | .OPTNS => Actus.Contract.Lending.Execution.optnsCashflows ct rf
+  | .PAM => Actus.Contract.Execution.pamCashflows ct rf
+  | .LAM => Actus.Contract.Execution.lamCashflows ct rf
+  | .NAM => Actus.Contract.Execution.namCashflows ct rf
+  | .ANN => Actus.Contract.Execution.annCashflows ct rf
+  | .CLM => Actus.Contract.Execution.clmCashflows ct rf
+  | .SWAPS => Actus.Contract.Execution.swapsCashflows ct rf
+  | .COM => Actus.Contract.Execution.comCashflows ct rf
+  | .STK => Actus.Contract.Execution.stkCashflows ct rf
+  | .OPTNS => Actus.Contract.Execution.optnsCashflows ct rf
+  | .FUTUR => Actus.Contract.Execution.futurCashflows ct rf
+  | .FXOUT => Actus.Contract.Execution.fxoutCashflows ct rf
+  | .CSH => []   -- cash: a position with no scheduled cash flows (AD only, payoff 0)
   | _    => []
 
 /-- Parse a test case and compute its cashflows under its own observed risk

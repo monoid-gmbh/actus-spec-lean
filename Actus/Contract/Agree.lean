@@ -19,10 +19,10 @@ import Actus.Contract.LAM
 import Actus.Contract.NAM
 import Actus.Contract.ANN
 
-namespace Actus.Contract.Lending.Agree
+namespace Actus.Contract.Agree
 
 open Actus.Protocol
-open Actus.Contract.Lending
+open Actus.Contract
 open Actus (Amount)
 
 variable {α : Type} [Amount α] [DecidableLE α]
@@ -83,4 +83,4 @@ theorem ann_step_to_fun {ct rf} {s s' : State α} (h : ANN.Step ct rf s s') :
 def ann_fun_to_step {ct rf} {s : State α} (e : EventType) {t : Time}
     (ht : s.sd ≤ t) : ANN.Step ct rf s (ANN.stf ct rf e t s) := .ev e ht
 
-end Actus.Contract.Lending.Agree
+end Actus.Contract.Agree

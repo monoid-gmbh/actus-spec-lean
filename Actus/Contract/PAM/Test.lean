@@ -16,15 +16,15 @@ Concrete numbers are exercised with `#eval` instead (computation, not proof).
 
 import Actus.Protocol
 import Actus.Closures
-import Actus.Contract.Lending.Common
-import Actus.Contract.Lending.Execution
+import Actus.Contract.Common
+import Actus.Contract.Execution
 import Actus.Contract.PAM
 
 namespace Actus.Contract.PAM.Test
 
 open Actus.Protocol
 open Actus.Closures
-open Actus.Contract.Lending
+open Actus.Contract
 open Actus.Contract.PAM
 
 -- ---------------------------------------------------------------------------
@@ -92,7 +92,7 @@ def pamDated : Terms Float :=
     cycleOfInterestPayment           := some { n := 6, period := "M", stub := false } }
 
 -- The generated event schedule (IED, two IP events, MD) and the cashflows.
-#eval Lending.Execution.genSchedule pamDated false
-#eval Lending.Execution.pamCashflows pamDated .id
+#eval Execution.genSchedule pamDated false
+#eval Execution.pamCashflows pamDated .id
 
 end Actus.Contract.PAM.Test

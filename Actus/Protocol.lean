@@ -23,6 +23,7 @@ inductive ContractType where
   | FUTUR -- Future
   | COM   -- Commodity
   | CSH   -- Cash
+  | FXOUT -- Foreign exchange outright
   | CLM   -- Call Money
   | SWPPV -- Plain Vanilla Swap
   | SWAPS -- Swap
@@ -311,6 +312,7 @@ mutual
     exerciseDate     : Option LocalTime
     -- Notional Principal
     notionalPrincipal                    : Option α
+    notionalPrincipal2                   : Option α
     premiumDiscountAtIED                 : Option α
     cycleAnchorDateOfPrincipalRedemption : Option LocalTime
     cycleOfPrincipalRedemption           : Option Cycle

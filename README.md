@@ -15,10 +15,11 @@ models**:
 
 and the two are **proven to agree**. Several further contract types are also
 implemented on the same engine — **COM** (commodity), **STK** (stock), **OPTNS**
-(European options), plus partial **CLM** (call money) and **SWAPS** (swaps). The
-engine is validated against the ACTUS Foundation's reference test suite: it
-matches **146 / 146** reference contracts exactly across the fully-supported
-types (all 2710 cash flows).
+(European options), **FUTUR** (futures), **FXOUT** (FX outright) and **CSH**
+(cash), plus partial **CLM** (call money) and **SWAPS** (swaps). The engine is
+validated against the ACTUS Foundation's reference test suite: it matches
+**176 / 176** reference contracts exactly across the fully-supported types (all
+2750 cash flows).
 
 The spec is **generic over the amount type**: it runs on native `Float` for the
 executable engine, and on the real numbers `ℝ` (via Mathlib) for the metatheorems
@@ -45,7 +46,7 @@ scripts/fetch-actus-tests.sh   # download the reference test data into actus-tes
 lake exe conformance           # diff computed vs expected cashflows
 ```
 
-`conformance` reads `actus-tests/actus-tests-{pam,lam,nam,ann}.json`, runs every
+`conformance` reads the gated `actus-tests/actus-tests-*.json` files, runs every
 contract through the engine under its own observed risk factors, and reports how
 many contracts and individual cash flows match. It exits `0` only when every
 contract matches, so it composes in CI:
@@ -80,10 +81,10 @@ then use `lake` as above.
 | | `Actus/Util/Conventions.lean` | contract-role sign, end-of-month and business-day conventions |
 | | `Actus/Util/Schedule.lean` | the schedule function `S(s,c,T,B)`, stub correction, and the annuity amount `A` |
 | Contracts | `Actus/Contract/PAM.lean`, `LAM.lean`, `NAM.lean`, `ANN.lean` | the lending family: per-event `stf`/`pof` functions and the relational `Step` |
-| | `Actus/Contract/Lending/Common.lean` | shared `State`, terms accessors, and the `RiskFactorEnv` observer interface |
-| Proofs | `Actus/Contract/Lending/Agree.lean` | relational ↔ functional agreement (`Step` is the graph of `stf`) |
-| | `Actus/Contract/Lending/Properties.lean` | metatheorems: determinism, status-date monotonicity, maturity |
-| Execution | `Actus/Execution.lean`, `Actus/Contract/Lending/Execution.lean` | the schedule-folding engine; `genSchedule` + per-contract cashflow generation |
+| | `Actus/Contract/Common.lean` | shared `State`, terms accessors, and the `RiskFactorEnv` observer interface |
+| Proofs | `Actus/Contract/Agree.lean` | relational ↔ functional agreement (`Step` is the graph of `stf`) |
+| | `Actus/Contract/Properties.lean` | metatheorems: determinism, status-date monotonicity, maturity |
+| Execution | `Actus/Execution.lean`, `Actus/Contract/Execution.lean` | the schedule-folding engine; `genSchedule` + per-contract cashflow generation |
 | I/O | `Actus/IO/Parse.lean` | parser for the `actus-tests` JSON format (terms, risk factors, expected events) |
 | | `Actus/IO/Conformance.lean` | the `conformance` executable |
 | Tests | `Actus/Contract/*/Test.lean`, `Actus/IO/Test.lean` | worked examples with `rfl`-checked cashflow theorems and `#eval` demonstrations |
@@ -103,7 +104,7 @@ constructor's target is literally the functional next-state, with side
 conditions (e.g. events do not move backwards in time) attached. `Trace` is its
 reflexive-transitive closure (`Star Step`).
 
-`Actus/Contract/Lending/Agree.lean` proves the two coincide — `Step` is exactly
+`Actus/Contract/Agree.lean` proves the two coincide — `Step` is exactly
 the graph of `stf` over admissible event/time pairs — so the fast executable
 engine and the clean relational spec cannot drift apart. Determinism then falls
 out as a corollary, and `Properties.lean` proves further structural
@@ -137,7 +138,10 @@ diffed against the expected one (1-cent tolerance):
 | COM (commodity) | 4 / 4 | 6 / 6 |
 | STK (stock) | 10 / 10 | 75 / 75 |
 | OPTNS (European option) | 23 / 23 | 36 / 36 |
-| **Total (gated)** | **146 / 146** | **2710 / 2710** |
+| FUTUR (future) | 14 / 14 | 26 / 26 |
+| FXOUT (FX outright) | 12 / 12 | 14 / 14 |
+| CSH (cash) | 4 / 4 | — |
+| **Total (gated)** | **176 / 176** | **2750 / 2750** |
 
 Every contract in the gated suite matches exactly. Two further types are
 implemented but not yet fully conformant, so they are **not** in the gated suite:

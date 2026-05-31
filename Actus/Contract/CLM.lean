@@ -8,7 +8,7 @@ Rate resets (`RR`) reprice it like PAM.
 
 The state transitions are *exactly* PAM's — CLM differs only in its **contract
 schedule** (interest capitalizes until maturity instead of being paid each
-period), which lives in `Actus.Contract.Lending.Execution`.  This module is the
+period), which lives in `Actus.Contract.Execution`.  This module is the
 thin per-contract view (relational `Step`, cashflow extraction) over the shared
 PAM `stf`/`pof`.
 -/
@@ -16,7 +16,7 @@ PAM `stf`/`pof`.
 import Actus.Protocol
 import Actus.Abstract
 import Actus.Closures
-import Actus.Contract.Lending.Common
+import Actus.Contract.Common
 import Actus.Contract.PAM
 
 namespace Actus.Contract.CLM
@@ -24,7 +24,7 @@ namespace Actus.Contract.CLM
 open Actus.Protocol
 open Actus.Abstract
 open Actus.Closures
-open Actus.Contract.Lending
+open Actus.Contract
 open Actus (Amount)
 
 variable {α : Type} [Amount α]

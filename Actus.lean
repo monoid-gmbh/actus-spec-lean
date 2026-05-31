@@ -9,8 +9,8 @@ Lean 4 formalization of the ACTUS technical specification.  Layers:
   year-fraction, schedule generation, annuity amount.
 * `Actus.Contract.{PAM,LAM,NAM,ANN}` — the lending family, each with a relational
   `Step` model and an executable functional STF/POF model, sharing
-  `Actus.Contract.Lending.Common`.
-* `Actus.Contract.Lending.{Agree,Properties,Execution}` — relational↔functional
+  `Actus.Contract.Common`.
+* `Actus.Contract.{Agree,Properties,Execution}` — relational↔functional
   agreement, metatheorems, and the schedule-driven cashflow pipeline.
 * `Actus.Execution` — generic schedule-folding engine.
 -/
@@ -26,16 +26,16 @@ import «Actus».Util.Conventions
 import «Actus».Util.DayCount
 import «Actus».Util.Schedule
 
--- Lending family
-import «Actus».Contract.Lending.Common
+-- Contract types
+import «Actus».Contract.Common
 import «Actus».Contract.PAM
 import «Actus».Contract.LAM
 import «Actus».Contract.NAM
 import «Actus».Contract.ANN
 import «Actus».Contract.CLM
-import «Actus».Contract.Lending.Agree
-import «Actus».Contract.Lending.Properties
-import «Actus».Contract.Lending.Execution
+import «Actus».Contract.Agree
+import «Actus».Contract.Properties
+import «Actus».Contract.Execution
 
 -- JSON parser (actus-tests format) for the lending family
 import «Actus».IO.Parse

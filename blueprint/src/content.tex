@@ -87,7 +87,7 @@ checks.
 \section{Metatheorems}
 
 \begin{theorem}[Relational/functional agreement]\label{thm:agree}
-        \lean{Actus.Contract.Lending.Agree.pam_step_to_fun}
+        \lean{Actus.Contract.Agree.pam_step_to_fun}
         \uses{def:pam-step}
         \leanok
         Every relational PAM step lands on the functional next-state for some
@@ -96,7 +96,7 @@ checks.
 \end{theorem}
 
 \begin{theorem}[Status-date monotonicity]\label{thm:mono}
-        \lean{Actus.Contract.Lending.Properties.pam_trace_mono}
+        \lean{Actus.Contract.Properties.pam_trace_mono}
         \uses{thm:agree}
         \leanok
         Along any execution trace the status date is non-decreasing: each step
@@ -104,7 +104,7 @@ checks.
 \end{theorem}
 
 \begin{theorem}[Maturity]\label{thm:maturity}
-        \lean{Actus.Contract.Lending.Properties.pam_md_nt}
+        \lean{Actus.Contract.Properties.pam_md_nt}
         \uses{def:pam-stf}
         \leanok
         The maturity event zeroes the notional principal (and accrued interest
@@ -114,9 +114,9 @@ checks.
 \subsection{Quantitative bounds and conservation (over $\mathbb{R}$)}
 
 \begin{theorem}[Rate cap/floor bound]\label{thm:rate-bound}
-        \lean{Actus.Contract.Lending.Properties.pam_rr_rate_mem,
-              Actus.Contract.Lending.Properties.ann_rr_rate_mem,
-              Actus.Contract.Lending.Properties.clamp_mem}
+        \lean{Actus.Contract.Properties.pam_rr_rate_mem,
+              Actus.Contract.Properties.ann_rr_rate_mem,
+              Actus.Contract.Properties.clamp_mem}
         \uses{def:pam-stf, def:amortizers}
         \leanok
         After a rate reset the nominal rate lies within the life floor/cap
@@ -128,9 +128,9 @@ checks.
 \end{theorem}
 
 \begin{theorem}[Redemption non-overshoot]\label{thm:no-overshoot}
-        \lean{Actus.Contract.Lending.Properties.redeemed_no_overshoot,
-              Actus.Contract.Lending.Properties.lam_pr_nt_mem,
-              Actus.Contract.Lending.Properties.redeemed_abs_le}
+        \lean{Actus.Contract.Properties.redeemed_no_overshoot,
+              Actus.Contract.Properties.lam_pr_nt_mem,
+              Actus.Contract.Properties.redeemed_abs_le}
         \uses{def:amortizers}
         \leanok
         A principal redemption never overshoots: with a sign-normalised
@@ -140,8 +140,8 @@ checks.
 \end{theorem}
 
 \begin{theorem}[Strict amortization and full repayment]\label{thm:amortization}
-        \lean{Actus.Contract.Lending.Properties.lam_pr_nt_lt,
-              Actus.Contract.Lending.Properties.lam_pr_full_repay}
+        \lean{Actus.Contract.Properties.lam_pr_nt_lt,
+              Actus.Contract.Properties.lam_pr_full_repay}
         \uses{thm:no-overshoot}
         \leanok
         With a strictly positive notional and instalment a redemption strictly
@@ -151,7 +151,7 @@ checks.
 \end{theorem}
 
 \begin{theorem}[Interest capitalization conserves value]\label{thm:ipci}
-        \lean{Actus.Contract.Lending.Properties.pam_ipci_capitalizes}
+        \lean{Actus.Contract.Properties.pam_ipci_capitalizes}
         \uses{def:pam-stf}
         \leanok
         The \texttt{IPCI} event moves accrued interest into the notional and
@@ -160,7 +160,7 @@ checks.
 \end{theorem}
 
 \begin{definition}[Principal-redemption trace]\label{def:prtrace}
-        \lean{Actus.Contract.Lending.Properties.PRTrace}
+        \lean{Actus.Contract.Properties.PRTrace}
         \uses{def:amortizers}
         \leanok
         \texttt{PRTrace} is the sub-relation of the LAM execution trace
@@ -170,9 +170,9 @@ checks.
 \end{definition}
 
 \begin{theorem}[Trace-level conservation of the notional]\label{thm:conservation}
-        \lean{Actus.Contract.Lending.Properties.prTrace_nt_mem,
-              Actus.Contract.Lending.Properties.prTrace_abs_le,
-              Actus.Contract.Lending.Properties.prTrace_isTrace}
+        \lean{Actus.Contract.Properties.prTrace_nt_mem,
+              Actus.Contract.Properties.prTrace_abs_le,
+              Actus.Contract.Properties.prTrace_isTrace}
         \uses{def:prtrace, thm:no-overshoot}
         \leanok
         Along an entire principal-redemption trace the notional stays in

@@ -6,15 +6,15 @@ instalments of 250, with quarterly interest at 10%.  Demonstrates the `PR` and
 `IPCB` machinery and the executable schedule pipeline.
 -/
 
-import Actus.Contract.Lending.Common
-import Actus.Contract.Lending.Execution
+import Actus.Contract.Common
+import Actus.Contract.Execution
 import Actus.Contract.LAM
 import Actus.Util.Conventions
 
 namespace Actus.Contract.LAM.Test
 
 open Actus.Protocol
-open Actus.Contract.Lending
+open Actus.Contract
 open Actus.Util.Conventions (sign)
 
 def lam : Terms Float :=
@@ -35,7 +35,7 @@ def lam : Terms Float :=
 theorem pr_reduces_notional (rf : RiskFactorEnv Float) (t : Time) (s : State Float) :
     (LAM.stf_PR lam rf t s).nt = s.nt - LAM.redeemed s.nt s.prnxt := rfl
 
-#eval Lending.Execution.genSchedule lam true
-#eval Lending.Execution.lamCashflows lam .id
+#eval Execution.genSchedule lam true
+#eval Execution.lamCashflows lam .id
 
 end Actus.Contract.LAM.Test
