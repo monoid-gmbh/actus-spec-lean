@@ -121,16 +121,24 @@ deliberately *not* expected to satisfy those laws — that split is the point.
 
 ## Conformance
 
-| Contract type | Exact contracts |
-|---|---|
-| PAM (principal at maturity) | 25 / 25 |
-| LAM (linear amortizer) | 31 / 31 |
-| NAM (negative amortizer) | 22 / 22 |
-| ANN (annuity) | 31 / 31 |
-| **Total** | **109 / 109** |
+The `Float` engine is run against the ACTUS Foundation's reference test suite
+under each contract's own observed risk factors, and every computed cash flow is
+diffed against the expected one (1-cent tolerance):
 
-All 2593 reference cash flows match within a 1-cent tolerance. Run
-`lake exe conformance` to reproduce.
+| Contract type | Exact contracts | Cash flows matched |
+|---|---|---|
+| PAM (principal at maturity) | 25 / 25 | 301 / 301 |
+| LAM (linear amortizer) | 31 / 31 | 711 / 711 |
+| NAM (negative amortizer) | 22 / 22 | 578 / 578 |
+| ANN (annuity) | 31 / 31 | 1003 / 1003 |
+| **Total** | **109 / 109** | **2593 / 2593** |
+
+Every reference contract matches exactly. Reproduce with:
+
+```bash
+scripts/fetch-actus-tests.sh    # download the reference data into actus-tests/
+lake exe conformance            # exits 0 only if every contract matches
+```
 
 ## Blueprint
 

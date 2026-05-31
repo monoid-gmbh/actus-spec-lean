@@ -23,6 +23,11 @@ jobs:
   build_project:
     runs-on: ubuntu-latest
     name: Build project
+    # The blueprint/docs step deploys to GitHub Pages (via actions/deploy-pages,
+    # inside docgen-action), which requires the deploying job to declare the
+    # github-pages environment.
+    environment:
+      name: github-pages
     steps:
       - name: Cleanup to free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.0
