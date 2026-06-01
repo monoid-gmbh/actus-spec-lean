@@ -15,11 +15,11 @@ models**:
 
 and the two are **proven to agree**. Several further contract types are also
 implemented on the same engine — **COM** (commodity), **STK** (stock), **OPTNS**
-(European options), **FUTUR** (futures), **FXOUT** (FX outright) and **CSH**
-(cash), plus partial **CLM** (call money) and **SWAPS** (swaps). The engine is
-validated against the ACTUS Foundation's reference test suite: it matches
-**176 / 176** reference contracts exactly across the fully-supported types (all
-2750 cash flows).
+(European options), **FUTUR** (futures), **FXOUT** (FX outright), **CSH** (cash)
+and **SWPPV** (plain-vanilla swap), plus partial **CLM** (call money), **SWAPS**
+(swaps) and **UMP** (non-maturity deposit). The engine is validated against the
+ACTUS Foundation's reference test suite: it matches **190 / 190** reference
+contracts exactly across the fully-supported types (all 2869 cash flows).
 
 The spec is **generic over the amount type**: it runs on native `Float` for the
 executable engine, and on the real numbers `ℝ` (via Mathlib) for the metatheorems
@@ -141,13 +141,14 @@ diffed against the expected one (1-cent tolerance):
 | FUTUR (future) | 14 / 14 | 26 / 26 |
 | FXOUT (FX outright) | 12 / 12 | 14 / 14 |
 | CSH (cash) | 4 / 4 | — |
-| **Total (gated)** | **176 / 176** | **2750 / 2750** |
+| SWPPV (plain-vanilla swap) | 14 / 14 | 119 / 119 |
+| **Total (gated)** | **190 / 190** | **2869 / 2869** |
 
-Every contract in the gated suite matches exactly. Two further types are
+Every contract in the gated suite matches exactly. A few further types are
 implemented but not yet fully conformant, so they are **not** in the gated suite:
-**CLM** (10 / 15 — defined-maturity contracts; the open-maturity "call" needs the
-event observer) and **SWAPS** (10 / 11 — only one annuity-maturity-derivation
-precision case remains). Reproduce with:
+**SWAPS** (10 / 11 — one annuity-maturity-derivation precision case), **CLM**
+(10 / 15 — defined-maturity contracts; the open-maturity "call" needs the event
+observer) and **UMP** (8 / 9). Reproduce with:
 
 ```bash
 scripts/fetch-actus-tests.sh    # download the reference data into actus-tests/

@@ -103,7 +103,7 @@ def contractTypeOf : String → Except String ContractType := enum "contractType
   [("PAM", .PAM), ("LAM", .LAM), ("NAM", .NAM), ("ANN", .ANN), ("STK", .STK),
    ("OPTNS", .OPTNS), ("FUTUR", .FUTUR), ("COM", .COM), ("CSH", .CSH),
    ("CLM", .CLM), ("SWPPV", .SWPPV), ("SWAPS", .SWAPS), ("CEG", .CEG), ("CEC", .CEC),
-   ("FXOUT", .FXOUT)]
+   ("FXOUT", .FXOUT), ("UMP", .UMP), ("CAPFL", .CAPFL), ("LAX", .LAX)]
 
 def contractRoleOf : String → Except String ContractRole := enum "contractRole"
   [("RPA", .CR_RPA), ("RPL", .CR_RPL), ("CLO", .CR_CLO), ("CNO", .CR_CNO),
@@ -305,6 +305,7 @@ partial def termsFromJson (j : Json) : Except String (Terms Float) := do
     optionType                     := ← opt j "optionType" pStr
     optionExerciseType             := ← opt j "optionExerciseType" pStr
     futuresPrice                   := ← opt j "futuresPrice" pFloat
+    nominalInterestRate2           := ← opt j "nominalInterestRate2" pFloat
     notionalPrincipal2             := ← opt j "notionalPrincipal2" pFloat
     currency2                      := ← opt j "currency2" pStr
     settlementPeriod               := ← opt j "settlementPeriod" pCycle
@@ -324,7 +325,7 @@ def eventTypeOf : String → Except String EventType := enum "eventType"
    ("PRD", .PRD), ("TD", .TD), ("IP", .IP), ("IPCI", .IPCI), ("IPCB", .IPCB),
    ("RR", .RR), ("RRF", .RRF), ("DV", .DV), ("PRF", .PRF), ("PY", .PY),
    ("PP", .PP), ("CD", .CD), ("STD", .STD), ("MD", .MD), ("XD", .XD),
-   ("SC", .SC), ("CE", .CE), ("PI", .PI)]
+   ("SC", .SC), ("CE", .CE), ("PI", .PI), ("IPFX", .IPFX), ("IPFL", .IPFL)]
 
 /-- A single observed market series: `(marketObjectCode, [(time, value)])`. -/
 private def parseSeries (j : Json) : Except String (List (String × List (Time × Float))) :=
@@ -437,6 +438,8 @@ def cashflowsOf (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   | .OPTNS => Actus.Contract.Execution.optnsCashflows ct rf
   | .FUTUR => Actus.Contract.Execution.futurCashflows ct rf
   | .FXOUT => Actus.Contract.Execution.fxoutCashflows ct rf
+  | .SWPPV => Actus.Contract.Execution.swppvCashflows ct rf
+  | .UMP => Actus.Contract.Execution.umpCashflows ct rf
   | .CSH => []   -- cash: a position with no scheduled cash flows (AD only, payoff 0)
   | _    => []
 

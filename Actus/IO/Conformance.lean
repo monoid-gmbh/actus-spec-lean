@@ -149,13 +149,14 @@ def main (args : List String) : IO UInt32 := do
   IO.println s!"reading from: {dir}"
   -- Gated suite = the fully-conformant types: the lending family (PAM/LAM/NAM/
   -- ANN), COM (4/4), STK (10/10), OPTNS (23/23), FUTUR (14/14), FXOUT (12/12),
-  -- CSH (4/4).  Still partial / ungated: CLM (defined maturity, 10/15) and
-  -- SWAPS (10/11 — one ANN-maturity-derivation precision edge).
+  -- CSH (4/4), SWPPV (14/14).  Still partial / ungated: CLM (defined maturity,
+  -- 10/15) and SWAPS (10/11 — one ANN-maturity-derivation precision edge).
   let files := ["actus-tests-pam.json", "actus-tests-lam.json",
                 "actus-tests-nam.json", "actus-tests-ann.json",
                 "actus-tests-com.json", "actus-tests-stk.json",
                 "actus-tests-optns.json", "actus-tests-futur.json",
-                "actus-tests-fxout.json", "actus-tests-csh.json"]
+                "actus-tests-fxout.json", "actus-tests-csh.json",
+                "actus-tests-swppv.json"]
   let mut g : Tally := {}
   for f in files do
     g := g + (← runFile dir f)

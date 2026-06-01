@@ -495,6 +495,94 @@ def fxoutCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
     let sdT := toTime ct.statusDate
     sortCF (flows.filter (fun c => Nat.ble sdT c.1.1))
 
+/-- SWPPV — a plain-vanilla interest-rate swap (single contract).  Each interest
+    period pays two legs: a fixed leg `IPFX = sign·N·fixedRate·Y` and a floating
+    leg `IPFL = −sign·N·floatRate·Y`, where `fixedRate = nominalInterestRate`,
+    `floatRate` starts at `nominalInterestRate2` and is reset by `RR` events to
+    `O^rf(RRMO)·RRMLT + RRSP` (clamped).  `IED`/`MD` exchange no principal
+    (payoff 0).  Gross (`D`) emits both legs; net (`S`) sums them per period. -/
+def swppvCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+  let rf := { rf with yf := fun a b => yf ct a b }
+  match ct.initialExchangeDate, ct.maturityDate with
+  | some ied, some md =>
+    let s      := Conventions.sign (α := Float) ct.contractRole
+    let n      := Terms.nt ct
+    let fixed  := Terms.ipnr ct
+    let float0 := ct.nominalInterestRate2.getD 0
+    let cfg    := ct.scheduleConfig
+    let iedT   := toTime ied
+    -- interest-payment dates (anchored cycle, up to & incl. maturity)
+    let ipDates := (cyclicTimes cfg ct.cycleAnchorDateOfInterestPayment
+                      ct.cycleOfInterestPayment ct.initialExchangeDate (some md) true).filter
+                      (fun t => Nat.blt iedT t)
+    -- rate-reset dates; the floating rate in force at `t` is the latest reset
+    -- strictly before `t` (else the initial `nominalInterestRate2`)
+    let rrDates := cyclicTimes cfg ct.cycleAnchorDateOfRateReset
+                     ct.cycleOfRateReset ct.initialExchangeDate (some md) false
+    let floatAt := fun (t : Time) =>
+      match (rrDates.filter (fun r => Nat.blt r t)).reverse.head? with
+      | some r => clampHi ct.lifeCap (clampLo ct.lifeFloor
+                    (rf.marketRate r * Terms.rrmlt ct + Terms.rrsp ct))
+      | none   => float0
+    let bounds := iedT :: ipDates
+    let flows := ((bounds.zip ipDates).map fun p =>
+      let yfp := rf.yf p.1 p.2
+      [((p.2, EventType.IPFX), s * n * fixed * yfp),
+       ((p.2, EventType.IPFL), -s * n * floatAt p.2 * yfp)]).flatten
+    -- net (cash) settlement sums the two legs of each period into one flow
+    let flows := match ct.deliverySettlement with
+      | some "S" =>
+        (sortCF flows).foldr (fun (c : Cashflow) (acc : Cashflows) =>
+          match acc with
+          | a :: rest => if c.1.1 == a.1.1 then ((c.1.1, EventType.IP), c.2 + a.2) :: rest
+                         else c :: acc
+          | [] => [c]) ([] : Cashflows)
+      | _ => flows
+    -- parent termination: drop interest after the termination date, settle TD
+    let flows := match ct.terminationDate with
+      | some td => let tdT := toTime td + (if rf.terminationEOD then 1 else 0)
+                   (flows.filter (fun c => Nat.ble c.1.1 tdT)) ++ [((tdT, EventType.TD), Terms.ptd ct)]
+      | none    => flows
+    -- parent purchase: drop pre-purchase flows, settle PRD
+    let flows := match ct.purchaseDate with
+      | some pd => let pT := toTime pd + (if rf.purchaseEOD then 1 else 0)
+                   afterPurchase ct (((pT, EventType.PRD), -s * Terms.pprd ct) :: flows)
+      | none    => flows
+    let sdT := toTime ct.statusDate
+    sortCF (flows.filter (fun c => Nat.ble sdT c.1.1))
+  | _, _ => []
+
+/-- UMP — undefined-maturity profile (a non-maturity deposit / savings account).
+    Principal is exchanged at `IED` (`−sign·N`); interest capitalizes (`IPCI`,
+    no cash) on the interest cycle; on termination `TD` pays back the grown
+    (capitalized) notional `sign·Nt`.  Open maturity, so the grown notional is
+    computed by compounding `Nt ← Nt·(1 + rate·Y)` over the capitalization dates
+    up to the termination date. -/
+def umpCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
+  let rf := { rf with yf := fun a b => yf ct a b }
+  match ct.initialExchangeDate with
+  | none     => []
+  | some ied =>
+    let s    := Conventions.sign (α := Float) ct.contractRole
+    let n    := Terms.nt ct
+    let rate := Terms.ipnr ct
+    let cfg  := ct.scheduleConfig
+    let iedT := toTime ied
+    let iedCF : Cashflow := ((iedT, EventType.IED), -s * n)
+    let tdCF := match ct.terminationDate with
+      | none    => []
+      | some td =>
+        let tdT := toTime td + (if rf.terminationEOD then 1 else 0)
+        let ipciDates := (cyclicTimes cfg ct.cycleAnchorDateOfInterestPayment
+                            ct.cycleOfInterestPayment ct.initialExchangeDate (some td) false).filter
+                            (fun t => Nat.blt iedT t && Nat.blt t tdT)
+        let bounds := iedT :: ipciDates
+        let ends   := ipciDates ++ [tdT]
+        let grown  := (bounds.zip ends).foldl (fun nt p => nt + nt * rate * rf.yf p.1 p.2) n
+        [((tdT, EventType.TD), s * grown)]
+    let sdT := toTime ct.statusDate
+    sortCF (([iedCF] ++ tdCF).filter (fun c => Nat.ble sdT c.1.1))
+
 -- ---------------------------------------------------------------------------
 -- SWAPS — a composite of two child legs; its cash flows are the legs'.
 -- ---------------------------------------------------------------------------

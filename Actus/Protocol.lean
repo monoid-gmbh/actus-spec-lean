@@ -24,6 +24,9 @@ inductive ContractType where
   | COM   -- Commodity
   | CSH   -- Cash
   | FXOUT -- Foreign exchange outright
+  | UMP   -- Undefined maturity profile
+  | CAPFL -- Cap / Floor
+  | LAX   -- Exotic amortizer
   | CLM   -- Call Money
   | SWPPV -- Plain Vanilla Swap
   | SWAPS -- Swap
@@ -398,6 +401,8 @@ inductive EventType where
   | SC   -- Scaling index fixing
   | CE   -- Credit event
   | PI   -- Premium payment
+  | IPFX -- Fixed-leg interest payment (swap)
+  | IPFL -- Floating-leg interest payment (swap)
   deriving Repr, DecidableEq
 
 /-- Priority for intra-timestamp event ordering (lower = processed first).
@@ -412,6 +417,7 @@ def eventTypePriority : EventType → Nat
   | .PY   => 12 | .PP   => 13 | .DV   => 14 | .CD   => 15
   | .STD  => 16 | .PRD  => 17 | .TD   => 18 | .XD   => 19
   | .MD   => 20 | .CE   => 21 | .PI   => 22
+  | .IPFX => 23 | .IPFL => 24
 
 /-- String representation of an event type. -/
 def eventTypeToString : EventType → String
@@ -421,6 +427,7 @@ def eventTypeToString : EventType → String
   | .DV   => "DV"  | .PRF  => "PRF"  | .PY   => "PY"  | .PP   => "PP"
   | .CD   => "CD"  | .STD  => "STD"  | .MD   => "MD"  | .XD   => "XD"
   | .SC   => "SC"  | .CE   => "CE"   | .PI   => "PI"
+  | .IPFX => "IPFX"| .IPFL => "IPFL"
 
 -- ---------------------------------------------------------------------------
 -- Convention functions
