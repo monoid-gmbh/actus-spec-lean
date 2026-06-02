@@ -82,6 +82,15 @@ def defaultTerms : Terms Float where
   cycleAnchorDateOfPrincipalRedemption := none
   cycleOfPrincipalRedemption           := none
   nextPrincipalRedemptionPayment       := none
+  arrayCycleAnchorDateOfInterestPayment     := none
+  arrayCycleOfInterestPayment               := none
+  arrayCycleAnchorDateOfPrincipalRedemption := none
+  arrayCycleOfPrincipalRedemption           := none
+  arrayNextPrincipalRedemptionPayment       := none
+  arrayIncreaseDecrease                     := none
+  arrayCycleAnchorDateOfRateReset           := none
+  arrayRate                                 := none
+  arrayFixedVariable                        := none
   purchaseDate                         := none
   priceAtPurchaseDate                  := none
   terminationDate                      := none
@@ -104,6 +113,7 @@ def defaultTerms : Terms Float where
   settlementPeriod := none
   exerciseAmount   := none
   futuresPrice     := none
+  xDayNotice       := none
   penaltyRate      := none
   penaltyType      := none
   prepaymentEffect := none
@@ -207,6 +217,12 @@ structure RiskFactorEnv (α : Type) [Amount α] where
   marketRateOf : String → Time → α := fun _ _ => 0
   /-- Observed dividend stream `Oᵉᵛ(DV)` — (date, amount) pairs (STK). -/
   dividends : List (Time × α) := []
+  /-- Observed credit events `Oᵉᵛ(CE)` — (event time, contract id, performance
+      state) triples.  Drives credit-enhancement payouts (CEG / CEC). -/
+  creditEvents : List (Time × String × String) := []
+  /-- Observed exercise time `Oᵉᵛ(CID)` — the latest `XD` event, which closes an
+      open-maturity contract (a CLM "call").  `none` ⇒ no exercise observed. -/
+  exerciseDate : Option Time := none
   /-- Year fraction `Y(s, t)` between two `Time` points. -/
   yf : Time → Time → α := fun _ _ => 0
   /-- Maturity / termination given as end-of-day (`23:59:59`): the event settles

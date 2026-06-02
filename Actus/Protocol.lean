@@ -245,10 +245,12 @@ structure Period where
 -- ---------------------------------------------------------------------------
 
 inductive ReferenceRole where
-  | FIL -- First leg
-  | SEL -- Second leg
-  | MOC -- Matched object code
-  | UDL -- Underlying (e.g. an option's underlying instrument)
+  | FIL  -- First leg
+  | SEL  -- Second leg
+  | MOC  -- Matched object code
+  | UDL  -- Underlying (e.g. an option's underlying instrument)
+  | COVE -- Covered (a credit-enhancement guarantee's covered contract)
+  | COVI -- Covering (a credit-enhancement collateral's covering contract)
   deriving Repr, DecidableEq
 
 -- ---------------------------------------------------------------------------
@@ -320,6 +322,16 @@ mutual
     cycleAnchorDateOfPrincipalRedemption : Option LocalTime
     cycleOfPrincipalRedemption           : Option Cycle
     nextPrincipalRedemptionPayment       : Option α
+    -- Array (piecewise) schedules — exotic amortizer (LAX)
+    arrayCycleAnchorDateOfInterestPayment      : Option (List LocalTime)
+    arrayCycleOfInterestPayment                : Option (List (Option Cycle))
+    arrayCycleAnchorDateOfPrincipalRedemption  : Option (List LocalTime)
+    arrayCycleOfPrincipalRedemption            : Option (List (Option Cycle))
+    arrayNextPrincipalRedemptionPayment        : Option (List α)
+    arrayIncreaseDecrease                      : Option (List String)  -- "INC"/"DEC"
+    arrayCycleAnchorDateOfRateReset            : Option (List LocalTime)
+    arrayRate                                  : Option (List α)
+    arrayFixedVariable                         : Option (List String)  -- "FIX"/"VAR"
     purchaseDate                         : Option LocalTime
     priceAtPurchaseDate                  : Option α
     terminationDate                      : Option LocalTime
@@ -345,6 +357,7 @@ mutual
     settlementPeriod : Option Cycle
     exerciseAmount   : Option α
     futuresPrice     : Option α
+    xDayNotice       : Option Cycle   -- exercise-notice period (e.g. P31D)
     -- Penalty
     penaltyRate      : Option α
     penaltyType      : Option PenaltyType

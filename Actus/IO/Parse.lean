@@ -131,10 +131,17 @@ def calendarOf : String → Except String Calendar := enum "calendar"
    ("MONDAYTOFRIDAY", .CLDR_MF)]
 
 def referenceRoleOf : String → Except String ReferenceRole := enum "referenceRole"
-  [("FIL", .FIL), ("SEL", .SEL), ("MOC", .MOC), ("UDL", .UDL)]
+  [("FIL", .FIL), ("SEL", .SEL), ("MOC", .MOC), ("UDL", .UDL),
+   ("COVE", .COVE), ("COVI", .COVI)]
 
 def performanceOf : String → Except String Performance := enum "contractPerformance"
   [("PF", .PRF_PF), ("DL", .PRF_DL), ("DQ", .PRF_DQ), ("DF", .PRF_DF)]
+
+def creditEventTypeOf : String → Except String CreditEventTypeCovered :=
+  enum "creditEventTypeCovered" [("DL", .CETC_DL), ("DQ", .CETC_DQ), ("DF", .CETC_DF)]
+
+def guaranteedExposureOf : String → Except String CreditEventGuaranteedExposure :=
+  enum "guaranteedExposure" [("NO", .CEGE_NO), ("NI", .CEGE_NI)]
 
 def feeBasisOf : String → Except String FeeBasis := enum "feeBasis"
   [("A", .FEB_A), ("N", .FEB_N)]
@@ -202,6 +209,13 @@ private def pStr   (j : Json) : Except String String    := j.getStr?
 private def pFloat (j : Json) : Except String Float      := jsonToFloat j
 private def pDate  (j : Json) : Except String LocalTime  := do parseDate (← j.getStr?)
 private def pCycle (j : Json) : Except String Cycle      := do parseCycle (← j.getStr?)
+
+/-- Parse a field that may be a single scalar *or* a JSON array of scalars into a
+    list (the ACTUS array attributes accept either form). -/
+private def pList (p : Json → Except String α) (j : Json) : Except String (List α) :=
+  match j.getArr? with
+  | .ok arr  => arr.toList.mapM p
+  | .error _ => (p j).map ([·])
 private def pEnum  (f : String → Except String α) (j : Json) : Except String α :=
   do f (← j.getStr?)
 
@@ -227,6 +241,10 @@ partial def termsFromJson (j : Json) : Except String (Terms Float) := do
           -- underlying referenced by market-object code (not a full contract)
           let moc ← req el "object" (fun o => req o "marketObjectCode" pStr)
           pure (ContractStructure.mk (Reference.referenceId moc) role .PAM)
+        else if rtyp == "CID" then
+          -- covered/covering contract referenced by contract identifier (CEG/CEC)
+          let cid ← req el "object" (fun o => req o "contractIdentifier" pStr)
+          pure (ContractStructure.mk (Reference.referenceId cid) role .PAM)
         else
           let child ← req el "object" termsFromJson
           pure (ContractStructure.mk (Reference.referenceTerms child) role child.contractType))))
@@ -271,6 +289,23 @@ partial def termsFromJson (j : Json) : Except String (Terms Float) := do
       ← opt j "cycleAnchorDateOfPrincipalRedemption" pDate
     cycleOfPrincipalRedemption       := ← opt j "cycleOfPrincipalRedemption" pCycle
     nextPrincipalRedemptionPayment   := ← opt j "nextPrincipalRedemptionPayment" pFloat
+    -- array (piecewise) schedules — exotic amortizer (LAX)
+    arrayCycleAnchorDateOfInterestPayment :=
+      ← opt j "arrayCycleAnchorDateOfInterestPayment" (pList pDate)
+    arrayCycleOfInterestPayment :=
+      ← opt j "arrayCycleOfInterestPayment" (pList (fun e => (pCycle e).map some))
+    arrayCycleAnchorDateOfPrincipalRedemption :=
+      ← opt j "arrayCycleAnchorDateOfPrincipalRedemption" (pList pDate)
+    arrayCycleOfPrincipalRedemption :=
+      ← opt j "arrayCycleOfPrincipalRedemption" (pList (fun e => (pCycle e).map some))
+    arrayNextPrincipalRedemptionPayment :=
+      ← opt j "arrayNextPrincipalRedemptionPayment" (pList pFloat)
+    arrayIncreaseDecrease :=
+      ← opt j "arrayIncreaseDecrease" (pList pStr)
+    arrayCycleAnchorDateOfRateReset :=
+      ← opt j "arrayCycleAnchorDateOfRateReset" (pList pDate)
+    arrayRate         := ← opt j "arrayRate" (pList pFloat)
+    arrayFixedVariable := ← opt j "arrayFixedVariable" (pList pStr)
     -- fees
     feeBasis             := ← opt j "feeBasis" (pEnum feeBasisOf)
     feeRate              := ← opt j "feeRate" pFloat
@@ -292,6 +327,7 @@ partial def termsFromJson (j : Json) : Except String (Terms Float) := do
     lifeCap                    := ← opt j "lifeCap" pFloat
     lifeFloor                  := ← opt j "lifeFloor" pFloat
     marketObjectCodeOfRateReset := ← opt j "marketObjectCodeOfRateReset" pStr
+    marketObjectCodeRef         := ← opt j "marketObjectCode" pStr
     -- scaling
     scalingEffect                  := ← opt j "scalingEffect" (pEnum scalingEffectOf)
     cycleAnchorDateOfScalingIndex  := ← opt j "cycleAnchorDateOfScalingIndex" pDate
@@ -309,8 +345,12 @@ partial def termsFromJson (j : Json) : Except String (Terms Float) := do
     notionalPrincipal2             := ← opt j "notionalPrincipal2" pFloat
     currency2                      := ← opt j "currency2" pStr
     settlementPeriod               := ← opt j "settlementPeriod" pCycle
+    xDayNotice                     := ← opt j "xDayNotice" pCycle
     contractStructure              := contractStructure
-    deliverySettlement             := ← opt j "deliverySettlement" pStr }
+    deliverySettlement             := ← opt j "deliverySettlement" pStr
+    creditEventTypeCovered         := ← opt j "creditEventTypeCovered" (pEnum creditEventTypeOf)
+    coverageOfCreditEnhancement    := ← opt j "coverageOfCreditEnhancement" pFloat
+    guaranteedExposure             := ← opt j "guaranteedExposure" (pEnum guaranteedExposureOf) }
 
 /-- Decode a `terms` object given as a raw JSON string. -/
 def termsFromString (s : String) : Except String (Terms Float) := do
@@ -341,6 +381,48 @@ private def parseSeries (j : Json) : Except String (List (String × List (Time �
       pure (kv.1, obs)
   | some _ => .error "dataObserved must be an object"
 
+/-- Observed credit events from `eventsObserved`: the `(time, contractId,
+    performanceState)` triples of every `type == "CE"` entry.  The state string
+    (e.g. `"DF"`) is taken from `states.contractPerformance` (drives CEG/CEC). -/
+private def parseCreditEvents (j : Json) : Except String (List (Time × String × String)) :=
+  match field? j "eventsObserved" with
+  | none => .ok []
+  | some v =>
+    match v.getArr? with
+    | .error _ => .ok []
+    | .ok arr  => do
+      let evs ← arr.toList.mapM fun e => do
+        let ty  ← (optAny e ["type", "eventType"] pStr)
+        match ty with
+        | some "CE" =>
+          let t   ← reqAny e ["time", "eventDate"] pDate
+          let cid ← (optAny e ["contractId", "contractIdentifier"] pStr)
+          let st  ← match field? e "states" with
+            | some s => (optAny s ["contractPerformance"] pStr)
+            | none   => pure none
+          pure (some (Actus.Contract.Execution.toTime t, cid.getD "", st.getD ""))
+        | _ => pure none
+      pure (evs.filterMap id)
+
+/-- Observed exercise time from `eventsObserved`: the latest `XD` event time, if
+    any (closes an open-maturity CLM "call"). -/
+private def parseExerciseDate (j : Json) : Except String (Option Time) :=
+  match field? j "eventsObserved" with
+  | none => .ok none
+  | some v =>
+    match v.getArr? with
+    | .error _ => .ok none
+    | .ok arr  => do
+      let ts ← arr.toList.mapM fun e => do
+        let ty ← (optAny e ["type", "eventType"] pStr)
+        match ty with
+        | some "XD" => do
+          let t ← reqAny e ["time", "eventDate"] pDate
+          pure (some (Actus.Contract.Execution.toTime t))
+        | _ => pure none
+      pure ((ts.filterMap id).foldl (fun acc t => max acc t) 0
+              |> (fun m => if m == 0 then none else some m))
+
 /-- Step interpolation: the latest observation with `time ≤ t`. -/
 private def stepLookup (obs : List (Time × Float)) (t : Time) : Float :=
   match (obs.filter (·.1 ≤ t)).reverse.head? with
@@ -352,6 +434,8 @@ private def stepLookup (obs : List (Time × Float)) (t : Time) : Float :=
     `1` (single-currency reference cases); prepayment/annuity default to none. -/
 def riskFactorsFromJson (j : Json) (ct : Terms Float) : Except String (RiskFactorEnv Float) := do
   let series ← parseSeries j
+  let creditEvents ← parseCreditEvents j
+  let exerciseDate ← parseExerciseDate j
   let lookup := fun (moc : Option String) =>
     match moc with
     | some m => ((series.find? (·.1 == m)).map (·.2)).getD []
@@ -368,6 +452,8 @@ def riskFactorsFromJson (j : Json) (ct : Terms Float) : Except String (RiskFacto
          marketRateOf   := fun m => stepLookup (lookup (some m))
          -- observed dividend stream (STK): the (date, amount) pairs of its series
          dividends      := lookup ct.marketObjectCodeOfDividends
+         creditEvents   := creditEvents
+         exerciseDate   := exerciseDate
          maturityEOD    := eodOf "maturityDate" || eodOf "amortizationDate"
          terminationEOD := eodOf "terminationDate"
          purchaseEOD    := eodOf "purchaseDate" }
@@ -440,8 +526,11 @@ def cashflowsOf (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   | .FXOUT => Actus.Contract.Execution.fxoutCashflows ct rf
   | .SWPPV => Actus.Contract.Execution.swppvCashflows ct rf
   | .UMP => Actus.Contract.Execution.umpCashflows ct rf
+  | .CAPFL => Actus.Contract.Execution.capflCashflows ct rf
+  | .LAX => Actus.Contract.Execution.laxCashflows ct rf
+  | .CEG => Actus.Contract.Execution.cegCashflows ct rf
+  | .CEC => Actus.Contract.Execution.cecCashflows ct rf
   | .CSH => []   -- cash: a position with no scheduled cash flows (AD only, payoff 0)
-  | _    => []
 
 /-- Parse a test case and compute its cashflows under its own observed risk
     factors — the full file → cashflows pipeline. -/

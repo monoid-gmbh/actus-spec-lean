@@ -443,4 +443,80 @@ theorem prTrace_isTrace {ct : Terms ℝ} {rf : RiskFactorEnv ℝ} {s s' : State 
       obtain ⟨tr⟩ := ih
       exact ⟨.step (LAM.Step.ev .PR ht) tr⟩
 
+-- ---------------------------------------------------------------------------
+-- Tier F (over ℝ): payoff bounds for the derivative & credit-enhancement
+-- families (CAPFL / OPTNS / FUTUR / FXOUT / SWPPV / CEG / CEC / LAX).  Their
+-- executable engines build cash flows over `Float`; these are the underlying
+-- mathematical bounds the payoff kernels obey, stated over `ℝ`.
+-- ---------------------------------------------------------------------------
+
+/-- **Cap/floor intrinsic is non-negative.**  CAPFL pays
+    `N·Y·(max(rate−cap,0) + max(floor−rate,0))` per period; the rate-excess kernel
+    is always ≥ 0, so a long cap/floor never has a negative leg. -/
+theorem capfl_intrinsic_nonneg (rate cap flr : ℝ) :
+    0 ≤ max (rate - cap) 0 + max (flr - rate) 0 :=
+  add_nonneg (le_max_right _ _) (le_max_right _ _)
+
+/-- A cap pays nothing while the rate is at or below the cap. -/
+theorem capfl_cap_inactive (rate cap : ℝ) (h : rate ≤ cap) : max (rate - cap) 0 = 0 :=
+  max_eq_right (sub_nonpos.mpr h)
+
+/-- A floor pays nothing while the rate is at or above the floor. -/
+theorem capfl_floor_inactive (rate flr : ℝ) (h : flr ≤ rate) : max (flr - rate) 0 = 0 :=
+  max_eq_right (sub_nonpos.mpr h)
+
+/-- **Option intrinsic value is non-negative** — a European call (`max(S−K,0)`)
+    and put (`max(K−S,0)`) never settle negative; the holder's payoff is ≥ 0. -/
+theorem option_call_intrinsic_nonneg (s k : ℝ) : 0 ≤ max (s - k) 0 := le_max_right _ _
+theorem option_put_intrinsic_nonneg  (s k : ℝ) : 0 ≤ max (k - s) 0 := le_max_right _ _
+
+/-- A call is in the money exactly when the underlying exceeds the strike. -/
+theorem option_call_pos_iff (s k : ℝ) : 0 < max (s - k) 0 ↔ k < s := by
+  rw [lt_max_iff, sub_pos]
+  constructor
+  · rintro (h | h)
+    · exact h
+    · exact absurd h (lt_irrefl 0)
+  · intro h; exact Or.inl h
+
+/-- **Future/forward payoff is linear** — the settlement `S − F` carries no
+    optional floor; gains and losses are symmetric. -/
+theorem futur_payoff_linear (s f : ℝ) : (s - f) + (f - s) = 0 := by ring
+
+/-- **FX delivery conservation.**  An FXOUT *delivery* settles the two notionals
+    as `sign·Nt₁` and `−sign·Nt₂`; at a unit FX rate the two legs net to the
+    par-difference `sign·(Nt₁ − Nt₂)`. -/
+theorem fxout_delivery_sum (sgn nt1 nt2 : ℝ) :
+    sgn * nt1 + (-(sgn * nt2)) = sgn * (nt1 - nt2) := by ring
+
+/-- **Swap net settlement equals the leg sum.**  A plain-vanilla swap's per-period
+    fixed leg `sign·N·fix·Y` and floating leg `−sign·N·flt·Y` net to the single
+    cash flow `sign·N·(fix−flt)·Y` — exactly what the `deliverySettlement = "S"`
+    fold computes from the two `D` legs. -/
+theorem swppv_net_eq_legs (sgn n fix flt y : ℝ) :
+    sgn * n * fix * y + (-(sgn * n * flt * y)) = sgn * n * (fix - flt) * y := by ring
+
+/-- **Collateral cap.**  CEC settles `min(coverage·exposure, collateralValue)`, so
+    the payout never exceeds the posted collateral … -/
+theorem cec_payout_le_value (claim value : ℝ) : min claim value ≤ value := min_le_right _ _
+/-- … nor the covered claim. -/
+theorem cec_payout_le_claim (claim value : ℝ) : min claim value ≤ claim := min_le_left _ _
+
+/-- A non-negative accumulator stays non-negative when folding in non-negative
+    summands — the kernel behind exposure/notional aggregation. -/
+theorem foldl_add_nonneg : ∀ (xs : List ℝ) (a : ℝ), 0 ≤ a →
+    (∀ x ∈ xs, 0 ≤ x) → 0 ≤ xs.foldl (· + ·) a
+  | [],      _, ha, _ => ha
+  | x :: xs, a, ha, h =>
+      foldl_add_nonneg xs (a + x) (add_nonneg ha (h x (List.mem_cons_self ..)))
+        (fun y hy => h y (List.mem_cons_of_mem x hy))
+
+/-- **Credit-enhancement exposure is non-negative.**  A guarantee's covered
+    exposure is a sum of per-leg magnitudes (`|Nt| + accrued`); aggregating
+    non-negative legs keeps it ≥ 0, hence the payout `coverage·exposure` has the
+    contract-role sign and never flips. -/
+theorem ceg_exposure_nonneg (legs : List ℝ) (h : ∀ x ∈ legs, 0 ≤ x) :
+    0 ≤ legs.foldl (· + ·) 0 :=
+  foldl_add_nonneg legs 0 le_rfl h
+
 end Actus.Contract.Properties

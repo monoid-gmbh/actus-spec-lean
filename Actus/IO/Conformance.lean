@@ -156,7 +156,16 @@ def main (args : List String) : IO UInt32 := do
                 "actus-tests-com.json", "actus-tests-stk.json",
                 "actus-tests-optns.json", "actus-tests-futur.json",
                 "actus-tests-fxout.json", "actus-tests-csh.json",
-                "actus-tests-swppv.json"]
+                "actus-tests-swppv.json", "actus-tests-capfl.json",
+                "actus-tests-cec.json", "actus-tests-lax.json",
+                "actus-tests-ump.json"]
+  -- ungated long tail: CEG (13/14 — guarantee14's reference value diverges from
+  -- techspec §7.17: the spec sets the NO exposure to CECV·Σ Nt (notional only,
+  -- = 3,500,000 here, which we compute), but the reference folds the defaulted
+  -- high-rate LAM's accrued interest in (3,508,695); matching it would violate
+  -- the published formula), CLM (14/15 — open-maturity calls now handled via the
+  -- exercise observer; clm10 needs split-rate accrual across a mid-period reset),
+  -- SWAPS (10/11).
   let mut g : Tally := {}
   for f in files do
     g := g + (← runFile dir f)

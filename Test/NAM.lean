@@ -1,23 +1,21 @@
 /-
-## LAM Test
+## NAM Test
 
-A linearly-amortizing loan: 1000 notional repaid in four quarterly principal
-instalments of 250, with quarterly interest at 10%.  Demonstrates the `PR` and
-`IPCB` machinery and the executable schedule pipeline.
+A negative amortizer: the fixed instalment covers interest first, only the
+remainder reduces principal.  Same terms as the LAM example, but redemption is
+interest-first, so the principal balance falls more slowly.
 -/
 
 import Actus.Contract.Common
 import Actus.Contract.Execution
-import Actus.Contract.LAM
-import Actus.Util.Conventions
+import Actus.Contract.NAM
 
-namespace Actus.Contract.LAM.Test
+namespace Test.NAM
 
 open Actus.Protocol
 open Actus.Contract
-open Actus.Util.Conventions (sign)
 
-def lam : Terms Float :=
+def nam : Terms Float :=
   { defaultTerms with
     contractRole                         := .CR_RPA
     notionalPrincipal                    := some 1000.0
@@ -30,12 +28,11 @@ def lam : Terms Float :=
     cycleOfInterestPayment               := some { n := 3, period := "M", stub := false }
     cycleOfPrincipalRedemption           := some { n := 3, period := "M", stub := false } }
 
-/-- A principal-redemption step reduces the notional by the redeemed amount
-    (the instalment capped at the remaining notional). -/
-theorem pr_reduces_notional (rf : RiskFactorEnv Float) (t : Time) (s : State Float) :
-    (LAM.stf_PR lam rf t s).nt = s.nt - LAM.redeemed s.nt s.prnxt := rfl
+/-- The NAM redemption applies the instalment interest-first: the principal
+    reduction is `Prnxt − Ipac_{t+}`. -/
+theorem pr_principal_portion (rf : RiskFactorEnv Float) (t : Time) (s : State Float) :
+    (NAM.stf_PR nam rf t s).nt = s.nt - LAM.redeemed s.nt (s.prnxt - LAM.ipacAccrIpcb rf t s) := rfl
 
-#eval Execution.genSchedule lam true
-#eval Execution.lamCashflows lam .id
+#eval Execution.namCashflows nam .id
 
-end Actus.Contract.LAM.Test
+end Test.NAM

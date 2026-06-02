@@ -11,7 +11,7 @@ import Actus.Contract.Common
 import Actus.Contract.Execution
 import Actus.Contract.ANN
 
-namespace Actus.Contract.ANN.Test
+namespace Test.ANN
 
 open Actus.Protocol
 open Actus.Contract
@@ -38,4 +38,4 @@ theorem rr_sets_annuity (rf : RiskFactorEnv Float) (t : Time) (s : State Float) 
 
 #eval Execution.annCashflows ann .id
 
-end Actus.Contract.ANN.Test
+end Test.ANN

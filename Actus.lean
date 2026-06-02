@@ -40,9 +40,5 @@ import «Actus».Contract.Execution
 -- JSON parser (actus-tests format) for the lending family
 import «Actus».IO.Parse
 
--- Tests
-import «Actus».Contract.PAM.Test
-import «Actus».Contract.LAM.Test
-import «Actus».Contract.NAM.Test
-import «Actus».Contract.ANN.Test
-import «Actus».IO.Test
+-- Tests live in the separate `Test` library target (see `Test.lean`), kept out
+-- of the documented API surface.

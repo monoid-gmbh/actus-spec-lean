@@ -7,7 +7,7 @@ and runs it through the lending engine, alongside the file's expected events.
 
 import Actus.IO.Parse
 
-namespace Actus.IO.Test
+namespace Test.IO
 
 open Actus.Protocol
 open Actus.Contract
@@ -55,4 +55,4 @@ example :
 #eval (testFileFromString pam01).toOption.map
   (·.map fun (id, tc) => (id, cashflowsOf tc.terms .id))
 
-end Actus.IO.Test
+end Test.IO

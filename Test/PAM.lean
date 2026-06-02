@@ -20,7 +20,7 @@ import Actus.Contract.Common
 import Actus.Contract.Execution
 import Actus.Contract.PAM
 
-namespace Actus.Contract.PAM.Test
+namespace Test.PAM
 
 open Actus.Protocol
 open Actus.Closures
@@ -95,4 +95,4 @@ def pamDated : Terms Float :=
 #eval Execution.genSchedule pamDated false
 #eval Execution.pamCashflows pamDated .id
 
-end Actus.Contract.PAM.Test
+end Test.PAM

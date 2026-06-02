@@ -1,5 +1,5 @@
 name = "actus"
-defaultTargets = ["Actus"]
+defaultTargets = ["Actus", "Test"]
 
 [leanOptions]
 pp.unicode.fun = true
@@ -24,6 +24,13 @@ name = "Actus"
 # doc-gen4 generates API pages for them — PAM/LAM/NAM/ANN, the utility layer,
 # the metatheorems, etc.  `Actus.*` = `Actus` and all submodules.
 globs = ["Actus.*"]
+
+[[lean_lib]]
+name = "Test"
+# The test suite (rfl-checked cash-flow theorems + `#eval` demos).  A separate
+# library so it is built by `lake build` (it is in `defaultTargets`) but kept
+# out of the documented `Actus` API surface that doc-gen4 generates.
+globs = ["Test.*"]
 
 [[lean_exe]]
 name = "conformance"

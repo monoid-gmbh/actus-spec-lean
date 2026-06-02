@@ -9,18 +9,22 @@
 \section{Overview}
 
 This blueprint documents the Lean~4 formalization of the ACTUS technical
-specification, covering the core lending family of contract types
-(PAM, LAM, NAM, ANN).  Each contract is modeled twice: relationally (the
-inductive \texttt{Step}, the readable spec) and functionally (computable
-state-transition and payoff functions), with the two proven to agree.
+specification.  It covers all eighteen contract types of the standard
+(\S7.1--7.18).  The stateful lending family (PAM, LAM, NAM, ANN, CLM) is modeled
+twice --- relationally (the inductive \texttt{Step}, the readable spec) and
+functionally (computable state-transition and payoff functions), with the two
+proven to agree.  The remaining types --- positions, derivatives, swaps, credit
+enhancement, and the exotic amortizer --- are direct cash-flow builders over the
+shared schedule-generation engine.
 
 The whole development is generic over the amount type and instantiated twice:
-at \texttt{Float} for the executable engine (validated against the ACTUS
-reference suite), and at the real numbers $\mathbb{R}$ for the quantitative
-metatheorems below.  The order/field structure those bounds need exists over
-$\mathbb{R}$ but not over \texttt{Float} (where $\mathtt{NaN}$ even breaks
-$a \le a$), so they are genuine theorems over $\mathbb{R}$ rather than empirical
-checks.
+at \texttt{Float} for the executable engine --- validated against the ACTUS
+reference test suite, where it reproduces all $236$ gated reference contracts
+($3155$ cash flows) exactly --- and at the real numbers $\mathbb{R}$ for the
+quantitative metatheorems below.  The order/field structure those bounds need
+exists over $\mathbb{R}$ but not over \texttt{Float} (where $\mathtt{NaN}$ even
+breaks $a \le a$), so they are genuine theorems over $\mathbb{R}$ rather than
+empirical checks.
 
 \section{Utility layer}
 
@@ -82,6 +86,90 @@ checks.
         The amortizing contracts, defined as deltas over PAM: a linear
         principal redemption (LAM), interest-first redemption (NAM), and
         constant-instalment annuity with rate-reset re-amortization (ANN).
+\end{definition}
+
+\begin{definition}[CLM: Call Money]\label{def:clm}
+        \lean{Actus.Contract.Execution.clmCashflows}
+        \uses{def:pam-stf}
+        \leanok
+        Call money (\S7.6): PAM state transitions with interest capitalizing
+        (\texttt{IPCI}) until maturity.  The open-maturity ``call'' has no fixed
+        maturity --- it closes on an observed exercise ($\mathtt{XD} =
+        \sup\tau(O^{ev}(\mathtt{CID}))$), settling the grown notional as
+        \texttt{STD} after the exercise-notice period.
+\end{definition}
+
+\subsection{Schedule generation and execution}
+
+\begin{definition}[Event schedule generation]\label{def:gensched}
+        \lean{Actus.Contract.Execution.genSchedule}
+        \uses{def:schedule}
+        \leanok
+        \texttt{genSchedule} builds the full event \texttt{Schedule} (IED,
+        IP/IPCI, PR, RR/RRF, FP, SC, MD, \dots) for a stateful contract from its
+        dictionary terms, following the Contract-Schedule tables (\S7.1--7.6);
+        \texttt{runSchedule} then folds the contract's \texttt{stf}/\texttt{pof}
+        over it.  This is the type-agnostic core shared by every contract family.
+\end{definition}
+
+\subsection{Stateless cash-flow builders}
+
+\begin{definition}[Position contracts]\label{def:position}
+        \lean{Actus.Contract.Execution.comCashflows,
+              Actus.Contract.Execution.stkCashflows}
+        \uses{def:sign}
+        \leanok
+        COM (commodity, \S7.10) and STK (stock, \S7.9): a purchase (\texttt{PRD})
+        and termination (\texttt{TD}) at the observed price, plus observed
+        dividends (\texttt{DV}) for stock.  (CSH, \S7.8, has no scheduled cash
+        flow.)
+\end{definition}
+
+\begin{definition}[Derivatives on an underlying]\label{def:derivative}
+        \lean{Actus.Contract.Execution.optnsCashflows,
+              Actus.Contract.Execution.futurCashflows,
+              Actus.Contract.Execution.fxoutCashflows,
+              Actus.Contract.Execution.capflCashflows}
+        \uses{def:sign, def:yearFraction}
+        \leanok
+        Cash-settled derivatives: a European option's intrinsic value (OPTNS,
+        \S7.15), a future's linear payoff $S - F$ (FUTUR, \S7.16), an FX
+        outright's two-currency settlement (FXOUT, \S7.11), and an interest-rate
+        cap/floor's rate-excess over a child contract's reset rate (CAPFL,
+        \S7.14).
+\end{definition}
+
+\begin{definition}[Swaps]\label{def:swap}
+        \lean{Actus.Contract.Execution.swppvCashflows,
+              Actus.Contract.Execution.swapsCashflows}
+        \uses{def:amortizers}
+        \leanok
+        SWPPV (plain-vanilla interest-rate swap, \S7.12) pays a fixed and a
+        floating interest leg per period; SWAPS (\S7.13) is a composite of two
+        child legs run by the ordinary engine and combined gross or net.
+\end{definition}
+
+\begin{definition}[Credit enhancement]\label{def:credit}
+        \lean{Actus.Contract.Execution.cegCashflows,
+              Actus.Contract.Execution.cecCashflows}
+        \uses{def:sign}
+        \leanok
+        CEG (guarantee, \S7.17) and CEC (collateral, \S7.18) over covered
+        contracts: a premium at purchase, and on a covered contract's observed
+        credit event the covered exposure ($\sum$ notional, plus accrued interest
+        when guaranteed) settles --- capped at the observed collateral value for
+        CEC.
+\end{definition}
+
+\begin{definition}[Exotic amortizer and deposit]\label{def:laxump}
+        \lean{Actus.Contract.Execution.laxCashflows,
+              Actus.Contract.Execution.umpCashflows}
+        \uses{def:amortizers, def:annuity}
+        \leanok
+        LAX (exotic amortizer, \S7.3) redeems (\texttt{PR}) or draws (\texttt{PI})
+        principal on piecewise \emph{array} schedules; UMP (undefined-maturity
+        profile, \S7.7) is a non-maturity deposit whose interest capitalizes,
+        settling at the agreed price plus accrued interest on termination.
 \end{definition}
 
 \section{Metatheorems}
@@ -180,4 +268,45 @@ checks.
         single-step non-overshoot lifted to whole executions by induction over
         the trace.  Every \texttt{PRTrace} is moreover a genuine LAM execution
         trace, so this is a statement about real runs.
+\end{theorem}
+
+\subsection{Payoff bounds for the derivative and credit families (over $\mathbb{R}$)}
+
+\begin{theorem}[Cap/floor and option intrinsics are non-negative]\label{thm:intrinsic}
+        \lean{Actus.Contract.Properties.capfl_intrinsic_nonneg,
+              Actus.Contract.Properties.option_call_intrinsic_nonneg,
+              Actus.Contract.Properties.option_put_intrinsic_nonneg,
+              Actus.Contract.Properties.option_call_pos_iff}
+        \uses{def:derivative}
+        \leanok
+        The cap/floor rate-excess kernel
+        $\max(r - \mathtt{cap}, 0) + \max(\mathtt{floor} - r, 0)$ and the
+        European call/put intrinsics $\max(S - K, 0)$, $\max(K - S, 0)$ are all
+        $\ge 0$, so a long cap, floor, or option never settles negative; a call
+        is in the money exactly when the underlying exceeds the strike.
+\end{theorem}
+
+\begin{theorem}[Settlement conservation for FX and swaps]\label{thm:conservation-deriv}
+        \lean{Actus.Contract.Properties.fxout_delivery_sum,
+              Actus.Contract.Properties.swppv_net_eq_legs}
+        \uses{def:swap, def:derivative}
+        \leanok
+        An FX outright's two delivery legs net to the par difference
+        $R \cdot (\mathtt{Nt_1} - \mathtt{Nt_2})$ at unit FX; a swap's per-period
+        fixed and floating legs net to $R \cdot N \cdot (\mathtt{fix} -
+        \mathtt{flt}) \cdot Y$ --- exactly what the net-settlement fold computes
+        from the two gross legs.
+\end{theorem}
+
+\begin{theorem}[Credit-enhancement payout bounds]\label{thm:credit-bound}
+        \lean{Actus.Contract.Properties.cec_payout_le_value,
+              Actus.Contract.Properties.cec_payout_le_claim,
+              Actus.Contract.Properties.ceg_exposure_nonneg,
+              Actus.Contract.Properties.foldl_add_nonneg}
+        \uses{def:credit}
+        \leanok
+        A collateral payout $\min(\mathtt{coverage}\cdot\mathtt{exposure},
+        \mathtt{value})$ never exceeds either the posted collateral value or the
+        covered claim; the covered exposure, a sum of per-leg magnitudes, is
+        non-negative, so the payout carries the contract-role sign.
 \end{theorem}

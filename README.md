@@ -18,8 +18,8 @@ implemented on the same engine — **COM** (commodity), **STK** (stock), **OPTNS
 (European options), **FUTUR** (futures), **FXOUT** (FX outright), **CSH** (cash)
 and **SWPPV** (plain-vanilla swap), plus partial **CLM** (call money), **SWAPS**
 (swaps) and **UMP** (non-maturity deposit). The engine is validated against the
-ACTUS Foundation's reference test suite: it matches **190 / 190** reference
-contracts exactly across the fully-supported types (all 2869 cash flows).
+ACTUS Foundation's reference test suite: it matches **236 / 236** reference
+contracts exactly across the fully-supported types (all 3155 cash flows).
 
 The spec is **generic over the amount type**: it runs on native `Float` for the
 executable engine, and on the real numbers `ℝ` (via Mathlib) for the metatheorems
@@ -80,14 +80,17 @@ then use `lake` as above.
 | | `Actus/Util/DayCount.lean` | year-fraction conventions (A/360, A/365, 30E/360, A/A-ISDA, B/252) |
 | | `Actus/Util/Conventions.lean` | contract-role sign, end-of-month and business-day conventions |
 | | `Actus/Util/Schedule.lean` | the schedule function `S(s,c,T,B)`, stub correction, and the annuity amount `A` |
-| Contracts | `Actus/Contract/PAM.lean`, `LAM.lean`, `NAM.lean`, `ANN.lean` | the lending family: per-event `stf`/`pof` functions and the relational `Step` |
+| Contracts (spec) | `Actus/Contract/PAM.lean`, `LAM.lean`, `NAM.lean`, `ANN.lean`, `CLM.lean` | the stateful lending family: per-event `stf`/`pof` functions and the relational `Step` |
 | | `Actus/Contract/Common.lean` | shared `State`, terms accessors, and the `RiskFactorEnv` observer interface |
 | Proofs | `Actus/Contract/Agree.lean` | relational ↔ functional agreement (`Step` is the graph of `stf`) |
-| | `Actus/Contract/Properties.lean` | metatheorems: determinism, status-date monotonicity, maturity |
-| Execution | `Actus/Execution.lean`, `Actus/Contract/Execution.lean` | the schedule-folding engine; `genSchedule` + per-contract cashflow generation |
+| | `Actus/Contract/Properties.lean` | metatheorems: determinism, status-date monotonicity, maturity, payoff bounds |
+| Execution | `Actus/Execution.lean`, `Actus/Contract/Engine.lean` | the type-agnostic core: `runSchedule`, `genSchedule`, and shared cash-flow helpers |
+| | `Actus/Contract/Lending.lean` | executable wrappers for the stateful family (`pamCashflows` … `clmCashflows`) |
+| | `Actus/Contract/{Position,Derivative,Swap,CreditEnh,LAX,UMP}.lean` | per-family cash-flow builders for the stateless types (positions, derivatives, swaps, credit enhancement, exotic amortizer, deposit) |
+| | `Actus/Contract/Execution.lean` | façade re-exporting the engine and all builders |
 | I/O | `Actus/IO/Parse.lean` | parser for the `actus-tests` JSON format (terms, risk factors, expected events) |
 | | `Actus/IO/Conformance.lean` | the `conformance` executable |
-| Tests | `Actus/Contract/*/Test.lean`, `Actus/IO/Test.lean` | worked examples with `rfl`-checked cashflow theorems and `#eval` demonstrations |
+| Tests | `Test/PAM.lean`, `LAM.lean`, `NAM.lean`, `ANN.lean`, `IO.lean` | worked examples with `rfl`-checked cashflow theorems and `#eval` demonstrations (a separate `Test` library target, kept out of the documented API) |
 
 `Actus.lean` is the top-level module that imports everything.
 
@@ -142,13 +145,19 @@ diffed against the expected one (1-cent tolerance):
 | FXOUT (FX outright) | 12 / 12 | 14 / 14 |
 | CSH (cash) | 4 / 4 | — |
 | SWPPV (plain-vanilla swap) | 14 / 14 | 119 / 119 |
-| **Total (gated)** | **190 / 190** | **2869 / 2869** |
+| CAPFL (cap / floor) | 4 / 4 | 6 / 6 |
+| LAX (exotic array amortizer) | 18 / 18 | 261 / 261 |
+| CEC (collateral) | 15 / 15 | 9 / 9 |
+| UMP (undefined maturity profile) | 9 / 9 | 10 / 10 |
+| **Total (gated)** | **236 / 236** | **3155 / 3155** |
 
 Every contract in the gated suite matches exactly. A few further types are
 implemented but not yet fully conformant, so they are **not** in the gated suite:
-**SWAPS** (10 / 11 — one annuity-maturity-derivation precision case), **CLM**
-(10 / 15 — defined-maturity contracts; the open-maturity "call" needs the event
-observer) and **UMP** (8 / 9). Reproduce with:
+**CEG** (13 / 14 — `guarantee14`'s reference value diverges from techspec §7.17,
+which gives the value we compute), **SWAPS** (10 / 11 — one annuity-maturity-
+derivation precision case) and **CLM** (14 / 15 — including the open-maturity
+"call" cases via the exercise observer; `clm10` alone needs split-rate accrual
+across a mid-period reset). Reproduce with:
 
 ```bash
 scripts/fetch-actus-tests.sh    # download the reference data into actus-tests/
