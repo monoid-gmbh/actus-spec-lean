@@ -14,12 +14,17 @@
 \input{macros/common}
 \input{macros/web}
 
+% \rowcolor (colortbl) shades the contract header/band rows in the PDF build.
+% plasTeX has no colortbl, so define it as a no-op here to swallow it; the web
+% build shades those rows via CSS in extra_styles.css instead.
+\newcommand{\rowcolor}[1]{}
+
 \home{https://monoid-gmbh.github.io/actus-spec-lean}
 \github{https://github.com/monoid-gmbh/actus-spec-lean}
 \dochome{https://monoid-gmbh.github.io/actus-spec-lean/docs}
 
 \title{Actus Specification}
-\author{Yves Hauser}
+\author{}
 
 \begin{document}
 \maketitle

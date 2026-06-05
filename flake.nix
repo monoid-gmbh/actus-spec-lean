@@ -28,7 +28,87 @@
         ]);
 
         # Lean 4 from the input
-        lean = pkgs.lean4; 
+        lean = pkgs.lean4;
+
+        # The `plastex` console script nixpkgs ships is a binary wrapper whose
+        # PYTHONPATH is pinned to plasTeX's own closure, so it cannot import the
+        # sibling plugins (leanblueprint, plastexdepgraph, plastexshowmore) that
+        # live alongside it in pythonEnv.  The result is that `\lean`, `\uses`
+        # and `\dochome` are silently dropped and the blueprint shows no links
+        # to the API docs.  This shim runs plasTeX through pythonEnv's python,
+        # which sees the whole environment, so the plugins load and every
+        # blueprint item links to its Lean declaration in the generated docs.
+        plastex = pkgs.writeShellScriptBin "plastex" ''
+          exec ${pythonEnv}/bin/python -c 'import sys; sys.argv = ["plastex"] + sys.argv[1:]; from plasTeX.client import plastex; sys.exit(plastex())' "$@"
+        '';
+
+        # Toolchain needed to compile the blueprint: the fixed `plastex` shim
+        # (must precede pythonEnv on PATH to shadow the broken wrapper),
+        # leanblueprint/plasTeX (pythonEnv), graphviz for the dependency graph,
+        # and a TeX system for the PDF.  Reused by both the build and serve apps.
+        blueprintRuntime = [
+          plastex
+          pythonEnv
+          pkgs.graphviz
+          pkgs.texlive.combined.scheme-medium
+        ];
+
+        # `nix run .#build` — compile the blueprint (web HTML + dependency
+        # graph, then PDF) from the current working tree, so it picks up local
+        # edits.  Run from the repository root.
+        blueprint-build = pkgs.writeShellApplication {
+          name = "blueprint-build";
+          runtimeInputs = blueprintRuntime;
+          text = ''
+            if [ ! -d blueprint ]; then
+              echo "error: no ./blueprint here — run from the repository root" >&2
+              exit 1
+            fi
+            cd blueprint || exit 1
+
+            # Call plastex/latexmk directly (the fixed shim is first on PATH)
+            # rather than via `leanblueprint web|pdf`, whose plastex subprocess
+            # does not pick up the shim.
+            echo "==> blueprint: compiling web (HTML + dependency graph)…"
+            rm -rf web && mkdir -p web
+            ( cd src && plastex -c plastex.cfg web.tex )
+
+            echo "==> blueprint: compiling PDF…"
+            if ( cd src && latexmk -xelatex -interaction=nonstopmode -halt-on-error \
+                   -auxdir=../print -outdir=../print print.tex ); then
+              echo "==> blueprint: PDF ready → blueprint/print/print.pdf"
+            else
+              echo "warning: PDF compile failed (web is still built)." >&2
+            fi
+
+            echo "==> blueprint: web → blueprint/web/index.html"
+          '';
+        };
+
+        # `nix run .#serve` — serve the blueprint locally at :8000 from the
+        # working tree.  Compiles the web version first if it is missing, or
+        # always when called as `nix run .#serve -- --rebuild`.
+        blueprint-serve = pkgs.writeShellApplication {
+          name = "blueprint-serve";
+          runtimeInputs = blueprintRuntime;
+          text = ''
+            if [ ! -d blueprint ]; then
+              echo "error: no ./blueprint here — run from the repository root" >&2
+              exit 1
+            fi
+            cd blueprint || exit 1
+
+            if [ "''${1:-}" = "--rebuild" ] || [ ! -f web/index.html ]; then
+              echo "==> blueprint: compiling web…"
+              rm -rf web && mkdir -p web
+              ( cd src && plastex -c plastex.cfg web.tex )
+            fi
+
+            echo "==> Serving blueprint at http://localhost:8000  (Ctrl-C to stop)"
+            cd web || exit 1
+            exec python -m http.server 8000
+          '';
+        };
 
       in {
         # Development shell
@@ -40,9 +120,18 @@
             # cache (`lake exe cache get`).  A nix-pinned Lean tends to mismatch
             # that toolchain and shadow elan, breaking `lake build`.
 
+            # Fixed `plastex` shim (see the `let` block) — must precede
+            # pythonEnv so `leanblueprint web` and `plastex` use the
+            # plugin-aware one, otherwise the blueprint loses its Lean links.
+            plastex
+
+            # Convenience commands, identical to `nix run .#build|serve`
+            blueprint-build
+            blueprint-serve
+
             # Python for blueprint
             pythonEnv
-            
+
             # Useful development tools
             pkgs.git
             pkgs.curl
@@ -59,6 +148,14 @@
           shellHook = ''
             echo "🎯 ACTUS Lean 4 Development Environment"
             echo ""
+
+            # Force the plugin-aware `plastex` shim ahead of the nixpkgs binary
+            # wrapper on PATH.  mkShell does not guarantee buildInputs order, and
+            # the wrapped `plastex` cannot see the leanblueprint plugins, so
+            # without this `leanblueprint web` produces a blueprint with no links
+            # to the Lean docs.  Subprocesses (incl. `leanblueprint web`) inherit
+            # this PATH, so the shim is used everywhere.
+            export PATH="${plastex}/bin:$PATH"
 
             # Lean/Lake are provided by elan (not nix): elan's shims read
             # ./lean-toolchain and dispatch to the pinned release.  We do NOT
@@ -86,8 +183,8 @@
             echo "Available commands:"
             echo "  lake build              - Build the Lean project"
             echo "  lake clean              - Clean build artifacts"
-            echo "  python scripts/blueprint.py build  - Build blueprint docs"
-            echo "  python scripts/blueprint.py serve  - Serve blueprint locally"
+            echo "  blueprint-build         - in-shell build (web + pdf)"
+            echo "  blueprint-serve         - in-shell serve at http://localhost:8000"
             echo ""
             echo "✓ Lean version: $(lean --version 2>/dev/null | head -1 || echo 'not found (install elan)')"
             echo "✓ Python version: $(python --version)"
@@ -177,13 +274,19 @@
           ];
         };
 
-        # Application for running locally
-        apps.default = {
-          type = "app";
-          program = "${pkgs.writeShellScript "actus-serve" ''
-            cd ${self.packages.${system}.blueprint}/share/doc/actus-spec
-            ${pkgs.python3}/bin/python -m http.server 8000
-          ''}";
+        apps = {
+          blueprint-build = {
+            type = "app";
+            program = "${blueprint-build}/bin/blueprint-build";
+          };
+          blueprint-serve = {
+            type = "app";
+            program = "${blueprint-serve}/bin/blueprint-serve";
+          };
+          default = {
+            type = "app";
+            program = "${blueprint-serve}/bin/blueprint-serve";
+          };
         };
 
       }

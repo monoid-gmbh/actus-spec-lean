@@ -27,3 +27,57 @@
  {\clist_map_inline:nn{#1}{\vphantom{\ref{##1}}}%
   \ignorespaces}
 \ExplSyntaxOff
+
+% ACTUS normative tables, print variant.  longtable lets these (sometimes
+% page-spanning) tables break cleanly across pages in the PDF.  macros/web.tex
+% has the matching tabular versions for the HTML build; the body is shared.
+\usepackage{longtable}
+
+\newenvironment{schedule}[1]{%
+  \begin{longtable}{| p{0.05\textwidth} | p{0.50\textwidth} | p{0.36\textwidth} |}
+  \hline \multicolumn{3}{|l|}{\textbf{#1: Contract Schedule}}\\ \hline
+  \textbf{Event} & \textbf{Schedule} & \textbf{Comments} \\ \hline\hline
+  \endfirsthead
+  \hline \textbf{Event} & \textbf{Schedule} & \textbf{Comments} \\ \hline\hline \endhead}%
+  {\hline\end{longtable}}
+
+\newenvironment{states}[1]{%
+  \begin{longtable}{| p{0.05\textwidth} | p{0.48\textwidth} | p{0.38\textwidth} |}
+  \hline \multicolumn{3}{|l|}{\textbf{#1: State Variables Initialization}}\\ \hline
+  \textbf{State} & \textbf{Initialization per $t_0$} & \textbf{Comments} \\ \hline\hline
+  \endfirsthead
+  \hline \textbf{State} & \textbf{Initialization per $t_0$} & \textbf{Comments} \\ \hline\hline \endhead}%
+  {\hline\end{longtable}}
+
+\newenvironment{functions}[1]{%
+  \begin{longtable}{| p{0.05\textwidth} | p{0.42\textwidth} | p{0.44\textwidth} |}
+  \hline \multicolumn{3}{|l|}{\textbf{#1: State Transition and Payoff Functions}}\\ \hline
+  \textbf{Event} & \textbf{Payoff Function} & \textbf{State Transition Function} \\ \hline\hline
+  \endfirsthead
+  \hline \textbf{Event} & \textbf{Payoff Function} & \textbf{State Transition Function} \\ \hline\hline \endhead}%
+  {\hline\end{longtable}}
+
+% Per-contract state-variable initialization, two columns (print variant).
+\newenvironment{stateinit}[1]{%
+  \begin{longtable}{| p{0.07\textwidth} | p{0.83\textwidth} |}
+  \hline \multicolumn{2}{|l|}{\textbf{#1: State Variables Initialization}}\\ \hline
+  \textbf{State} & \textbf{Initialization per $t_0$} \\ \hline\hline
+  \endfirsthead
+  \hline \textbf{State} & \textbf{Initialization per $t_0$} \\ \hline\hline \endhead}%
+  {\hline\end{longtable}}
+
+% Per-contract event table, four columns (print variant; see macros/web.tex).
+\newenvironment{events}[1]{%
+  \begin{longtable}{| p{0.045\textwidth} | p{0.27\textwidth} | p{0.26\textwidth} | p{0.28\textwidth} |}
+  \hline \multicolumn{4}{|l|}{\textbf{#1: Events}}\\ \hline
+  \textbf{Event} & \textbf{Schedule} & \textbf{Payoff Function} & \textbf{State Transition} \\ \hline\hline
+  \endfirsthead
+  \hline \textbf{Event} & \textbf{Schedule} & \textbf{Payoff Function} & \textbf{State Transition} \\ \hline\hline \endhead}%
+  {\hline\end{longtable}}
+
+% Single per-contract banded table (print variant; see macros/web.tex).  Body
+% rows (incl. band labels) end with "\\ \hline", so no closing rule is added.
+\newenvironment{contract}[1]{%
+  \begin{longtable}{| p{0.07\textwidth} | p{0.27\textwidth} | p{0.26\textwidth} | p{0.27\textwidth} |}
+  \hline \rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{#1}}\\ \hline}%
+  {\end{longtable}}

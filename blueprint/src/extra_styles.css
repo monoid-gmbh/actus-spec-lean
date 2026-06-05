@@ -23,3 +23,21 @@ div.corollary_thmcontent {
 div.proof_content {
 	border-left: .08rem solid grey;
 }
+
+/* Keep the prose at the theme's readable column width (75ch), but let the wide
+ * contract tables break out of that column and span most of the viewport,
+ * centred on the same axis as the prose.  margin-left:50% moves the table to
+ * the column's centre; translateX(-50%) then centres the wide table there. */
+div.content-wrapper table.tabular {
+	width: 92vw;
+	margin-left: 50%;
+	transform: translateX(-50%);
+}
+
+/* Shade the header / band rows grey.  These are exactly the rows that carry a
+ * bold label (the contract title, the two section bands, and the
+ * Event/Schedule/Payoff/State-Transition column header); data cells use math or
+ * \texttt and never produce a b.bfseries, so this targets only the headers. */
+table.tabular tr:has(td b.bfseries) > td {
+	background-color: #e3e3e3;
+}

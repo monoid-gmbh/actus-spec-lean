@@ -16,3 +16,69 @@
 
 \theoremstyle{definition}
 \newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+% ============================================================================
+% ACTUS specification notation.
+%
+% These macros mirror the notation of the ACTUS Technical Specification
+% (ACTUS Financial Research Foundation, v1.1, CC-BY-SA 4.0) so that the
+% blueprint can reproduce the standard's schedule / state-transition / payoff
+% formulas verbatim and link each to its Lean counterpart.  Names are kept
+% close to the upstream source to ease cross-checking.
+% ============================================================================
+
+\newcommand{\Real}{\mathbb{R}}
+\newcommand{\Nat}{\mathbb{N}}
+
+\newcommand{\attr}[1]{\texttt{#1}}              % contract attribute
+\newcommand{\svar}[2]{\ensuremath{\mathbf{#1}_{#2}}}  % state variable  Nt_{t}
+% Plain/primed convention inside a state transition: a plain symbol is the
+% pre-event value (the standard's t^-), a primed symbol the post-event value
+% (the standard's t^+).  See the "Contract events, STF and POF" notes.
+\newcommand{\sv}[1]{\ensuremath{\mathbf{#1}}}         % state var, pre-event value
+\newcommand{\svn}[1]{\ensuremath{\mathbf{#1}'}}       % state var, post-event value
+% The interest accrued on the outstanding notional since the last state date,
+% Y(Sd,t)*Ipnr*Nt.  It recurs in nearly every transition; abbreviated here and
+% defined once in the notation section.  \Delta is core LaTeX (plasTeX-safe).
+\newcommand{\dipac}{\ensuremath{\Delta\mathbf{Ipac}}}
+\newcommand{\nul}{\varnothing}                   % the null / undefined value (techspec $\undef$)
+\newcommand{\sgn}{R(\attr{CNTRL})}               % contract-role sign
+
+\newcommand{\stf}[2]{\ensuremath{\mathrm{STF}\_#1\_#2()}}  % named state-transition fn
+\newcommand{\pof}[2]{\ensuremath{\mathrm{POF}\_#1\_#2()}}  % named payoff fn
+
+% Fallback for plasTeX, which does not provide hyperref's \texorpdfstring;
+% in the print build hyperref already defines it, so \providecommand is a no-op.
+\providecommand{\texorpdfstring}[2]{#1}
+\newcommand{\dfl}[1]{D(\mathbf{Prf}_{#1})}
+
+\newcommand{\sdl}[3]{S(#1,#2,#3)}                % schedule
+\newcommand{\sdll}[4]{S(#1,#2,#3,#4)}
+\newcommand{\vsdl}[3]{\vec{S}(#1,#2,#3)}         % array schedule
+\newcommand{\yfr}[2]{Y(#1,#2)}                   % year fraction
+\newcommand{\yfrfunc}{Y}
+\newcommand{\ann}[5]{A(#1,#2,#3,#4,#5)}          % annuity amount
+\newcommand{\annfunc}{A}
+
+\newcommand{\obs}[3]{O^{#1}(#2,#3)}              % risk-factor observer
+\newcommand{\obsfull}[5]{O^{#1}(#2,#3,#4,#5)}
+\newcommand{\obsfunc}[1]{O^{#1}}
+\newcommand{\cldev}[3]{U^{ev}(#1,#2 \mid\{#3\})} % child-contract observer
+\newcommand{\cldsv}[4]{U^{sv}(#1,#2,\svar{#3}{} \mid\{#4\})}
+\newcommand{\cldsvs}[3]{U^{sv}(#1,#2,\svar{#3}{})}
+\newcommand{\cldca}[2]{U^{ca}(#1,#2)}
+\newcommand{\cldfunc}[1]{U^{#1}}
+
+\newcommand{\tmax}{t^{max}}
+\newcommand{\tev}[1]{\tau(#1)}                   % event time
+\newcommand{\fev}[1]{f(#1)}                      % event type
+\newcommand{\payoff}[2]{F(#1,#2)}                % canonical payoff
+
+% The three normative tables that document each contract type --- the
+% Contract Schedule, the State-Variable Initialization, and the State
+% Transition / Payoff Functions --- are defined per output format:
+% longtable for the print build (macros/print.tex, page-breakable) and
+% plain tabular for the web build (macros/web.tex, rendered to HTML by
+% plasTeX, which does not support longtable).  Both accept the same body:
+% rows of three cells separated by & and terminated by \\ \hline.

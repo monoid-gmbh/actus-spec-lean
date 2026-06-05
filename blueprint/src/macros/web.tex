@@ -3,3 +3,57 @@
 % version in macros/print.tex.
 % Typically the printed version could have more fancy decorations.
 % This will probably be a very short file.
+
+% ACTUS normative tables, web variant.  plasTeX renders tabular as a native
+% HTML table (no page-breaking needed in HTML), so we use tabular here while
+% macros/print.tex uses longtable for the paginated PDF.  The body is shared.
+\newenvironment{schedule}[1]{%
+  \par\noindent
+  \begin{tabular}{| p{0.05\textwidth} | p{0.50\textwidth} | p{0.36\textwidth} |}
+  \hline \multicolumn{3}{|l|}{\textbf{#1: Contract Schedule}}\\ \hline
+  \textbf{Event} & \textbf{Schedule} & \textbf{Comments} \\ \hline}%
+  {\hline\end{tabular}\par}
+
+\newenvironment{states}[1]{%
+  \par\noindent
+  \begin{tabular}{| p{0.05\textwidth} | p{0.48\textwidth} | p{0.38\textwidth} |}
+  \hline \multicolumn{3}{|l|}{\textbf{#1: State Variables Initialization}}\\ \hline
+  \textbf{State} & \textbf{Initialization per $t_0$} & \textbf{Comments} \\ \hline}%
+  {\hline\end{tabular}\par}
+
+\newenvironment{functions}[1]{%
+  \par\noindent
+  \begin{tabular}{| p{0.05\textwidth} | p{0.42\textwidth} | p{0.44\textwidth} |}
+  \hline \multicolumn{3}{|l|}{\textbf{#1: State Transition and Payoff Functions}}\\ \hline
+  \textbf{Event} & \textbf{Payoff Function} & \textbf{State Transition Function} \\ \hline}%
+  {\hline\end{tabular}\par}
+
+% Per-contract state-variable initialization, two columns (the former Comments
+% column is folded into the Initialization column).  Web variant.
+\newenvironment{stateinit}[1]{%
+  \par\noindent
+  \begin{tabular}{| p{0.07\textwidth} | p{0.83\textwidth} |}
+  \hline \multicolumn{2}{|l|}{\textbf{#1: State Variables Initialization}}\\ \hline
+  \textbf{State} & \textbf{Initialization per $t_0$} \\ \hline}%
+  {\hline\end{tabular}\par}
+
+% Per-contract event table, four columns, merging the schedule (its Comments
+% folded into Schedule) with the payoff / state-transition functions, joined by
+% event.  Web variant; macros/print.tex has the longtable versions.
+\newenvironment{events}[1]{%
+  \par\noindent
+  \begin{tabular}{| p{0.045\textwidth} | p{0.27\textwidth} | p{0.26\textwidth} | p{0.28\textwidth} |}
+  \hline \multicolumn{4}{|l|}{\textbf{#1: Events}}\\ \hline
+  \textbf{Event} & \textbf{Schedule} & \textbf{Payoff Function} & \textbf{State Transition} \\ \hline}%
+  {\hline\end{tabular}\par}
+
+% Single per-contract table: a state-variable initialization band (state name in
+% column 1, its initialization spanning the remaining columns) followed by an
+% events band (Event | Schedule | Payoff | State Transition).  The merge script
+% fills the body, including the band-label rows, and every row ends with
+% "\\ \hline", so the environment adds no closing rule.  Web variant.
+\newenvironment{contract}[1]{%
+  \par\noindent
+  \begin{tabular}{| p{0.07\textwidth} | p{0.27\textwidth} | p{0.26\textwidth} | p{0.27\textwidth} |}
+  \hline \multicolumn{4}{|l|}{\textbf{#1}}\\ \hline}%
+  {\end{tabular}\par}
