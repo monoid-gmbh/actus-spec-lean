@@ -281,7 +281,7 @@ functions below are reused throughout the family.
 \end{definition}
 
 \begin{contract}{PAM}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Md}{t_0} = \attr{MD}$} \\ \hline
 	$\svar{Nt}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Nt}{t_0} = \left\{\begin{array}{@{}l@{\quad}l@{}} 0.0 & \text{if} \quad \attr{IED} > t_0 \\
@@ -439,7 +439,7 @@ which interest is charged.
 \end{definition}
 
 \begin{contract}{LAM}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Md}{t_0}=\left\{\begin{array}{@{}l@{\quad}l@{}}
 						\attr{MD} & \text{if}\quad \attr{MD}\neq\nul\\
@@ -620,7 +620,7 @@ of the currently active segment.
 \end{definition}
 
 \begin{contract}{LAX}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Md}{t_0}=\left\{\begin{array}{@{}l@{\quad}l@{}}
 						\attr{MD} & \text{if}\quad \attr{MD}\neq\nul\\
@@ -756,7 +756,7 @@ scheduled payment is held constant even when it fails to cover current
 interest.
 
 \begin{contract}{NAM}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Md}{t_0}=\left\{\begin{array}{@{}l@{\quad}l@{}}
 						\attr{MD} & \text{if}\quad \attr{MD}\neq\nul\\
@@ -833,7 +833,7 @@ PAM's rate, interest and fee logic --- which is why the rate-bound metatheorem
 (\ref{thm:rate-bound}) carries over to ANN for free.
 
 \begin{contract}{ANN}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{Same as NAM} \\ \hline
 	$\svar{Nt}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{Same as PAM} \\ \hline
@@ -909,7 +909,7 @@ state transitions directly.
 \end{definition}
 
 \begin{contract}{CLM}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Md}{t_0} = \left\{\begin{array}{@{}l@{\quad}l@{}} \attr{MD} & \text{if}\quad \attr{MD}\neq\nul \\
 							s & \text{else if}\quad \obs{ev}{\attr{CID}}{t_0}\neq\{\} \\
@@ -953,7 +953,7 @@ capitalized into it.  It is formalized jointly with LAX as \ref{def:laxump},
 since both reduce to array-schedule executions of the shared engine.
 
 \begin{contract}{UMP}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Md}{t_0} = \left\{\begin{array}{@{}l@{\quad}l@{}} s & \text{if}\quad \obs{ev}{\attr{CID}}{t_0}\neq\{\} \\
 							\tmax & \text{else} \end{array}\right.$ \par where\par
@@ -996,7 +996,7 @@ analyzed uniformly; it generates no scheduled cash flow of its own, which is why
 its tables below are essentially empty.
 
 \begin{contract}{CSH}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Nt}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Nt}{t_0}=\sgn\attr{NT}$} \\ \hline
 	$\svar{Sd}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{Same as PAM} \\ \hline
@@ -1027,7 +1027,7 @@ long/short role.  It shares its definition with the commodity position
 \end{definition}
 
 \begin{contract}{STK}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Prf}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{Same as PAM} \\ \hline
 	$\svar{Sd}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{Same as PAM} \\ \hline
@@ -1057,7 +1057,7 @@ and, like STK, is a stateless builder over observed prices.  Formalized with STK
 as \ref{def:position}.
 
 \begin{contract}{COM}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Sd}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{Same as STK} \\ \hline
 	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{Events}} \\ \hline
@@ -1092,7 +1092,7 @@ cash-settled derivatives formalized as \ref{def:derivative}.
 \end{definition}
 
 \begin{contract}{FXOUT}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Md}{t_0} = \left\{\begin{array}{@{}l@{\quad}l@{}} \attr{MD} & \text{if}\quad \attr{STD}=\nul\\
 							\attr{STD} & \text{else} \end{array}\right.$} \\ \hline
@@ -1141,7 +1141,7 @@ which the formalization proves equals the difference of the two gross legs
 \end{definition}
 
 \begin{contract}{SWPPV}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{Same as PAM} \\ \hline
 	$\svar{Nt}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{Same as PAM} \\ \hline
@@ -1228,7 +1228,7 @@ and other structured exchanges as hierarchies of simpler contracts
 (\S\ref{sec:composition}).  SWAPS is formalized with SWPPV as \ref{def:swap}.
 
 \begin{contract}{SWAPS}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Md}{t_0}=\max(\cldsvs{\attr{CTST}_{FirstLeg}^{Contract}}{t_0}{Tmd}, \cldsvs{\attr{CTST}_{SecondLeg}^{Contract}}{t_0}{Tmd})$} \\ \hline
 	$\svar{Ipac}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Ipac}{t_0} = \cldsv{\attr{CTST}_{FirstLeg}^{Contract}}{t_0}{Ipac}{\attr{CNTRL}=r^{(1)}} + \cldsv{\attr{CTST}_{SecondLeg}^{Contract}}{t_0}{Ipac}{\attr{CNTRL}=r^{(2)}}$ \par with\par
@@ -1298,7 +1298,7 @@ intrinsic-value metatheorem (\ref{thm:intrinsic}) proves these payoffs are
 always non-negative.  Formalized with the derivatives as \ref{def:derivative}.
 
 \begin{contract}{CAPFL}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Md}{t_0}=\max(\cldsv{\attr{CTST}_{Underlying}^{Contract}}{t_0}{Tmd}{\attr{CNTRL}=RPA},$ \par
 			$\qquad \cldsv{\attr{CTST}_{Underlying}^{Contract}}{t_0}{Tmd}{\attr{CNTRL}=RPA,\attr{RRLC}=\attr{RRLC},\attr{RRLF}=\attr{RRLF}})$} \\ \hline
@@ -1351,7 +1351,7 @@ value is non-negative and that a call is in the money exactly when $S>K$
 (\ref{thm:intrinsic}).  Formalized with the derivatives as \ref{def:derivative}.
 
 \begin{contract}{OPTNS}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Xd}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Xd}{t_0} = \attr{XD}$} \\ \hline
 	$\svar{Xa}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Xa}{t_0} = \attr{XA}$} \\ \hline
@@ -1407,7 +1407,7 @@ FUTUR is the simplest of the derivative builders defined over a child
 underlying, and is formalized with them as \ref{def:derivative}.
 
 \begin{contract}{FUTUR}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Xd}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{Same as OPTNS} \\ \hline
 	$\svar{Xa}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{Same as OPTNS} \\ \hline
@@ -1468,7 +1468,7 @@ reference suite rather than a defect of the specification.
 \end{definition}
 
 \begin{contract}{CEG}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Md}{t_0}=\left\{\begin{array}{@{}l@{\quad}l@{}} \attr{MD} & \text{if}\quad \attr{MD}\neq\nul \\
 				\max(\tev{\{e_t^k\}}) & \text{else} \end{array}\right.$ \par with\par
@@ -1591,7 +1591,7 @@ This cap is exactly the bound proved in \ref{thm:credit-bound}.  CEC is
 formalized with CEG as \ref{def:credit}.
 
 \begin{contract}{CEC}
-	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State variables}} \\ \hline
+	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
 	\rowcolor{hdrgrey}\textbf{Variable} & \multicolumn{3}{p{0.80\textwidth}|}{\textbf{Initialization per $t_0$}} \\ \hline
 	$\svar{Md}{}$ & \multicolumn{3}{p{0.80\textwidth}|}{$\svar{Md}{t_0}=\left\{\begin{array}{@{}l@{\quad}l@{}} \attr{MD} & \text{if}\quad \attr{MD}\neq\nul \\
 				\max(\tev{\{e_t^k\}}) & \text{else} \end{array}\right.$ \par with\par
