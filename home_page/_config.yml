@@ -19,8 +19,6 @@
 # in the templates via {{ site.myvariable }}.
 
 title: Actus Specification
-#email: your-email@example.com
-description: by Yves Hauser
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://monoid-gmbh.github.io/actus-spec-lean" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username:
