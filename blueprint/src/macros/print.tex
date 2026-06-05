@@ -81,3 +81,11 @@
   \begin{longtable}{| p{0.07\textwidth} | p{0.27\textwidth} | p{0.26\textwidth} | p{0.27\textwidth} |}
   \hline \rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{#1}}\\ \hline}%
   {\end{longtable}}
+
+% Data-dictionary glossary table (Acronym | Name | Description).  Print variant.
+\newenvironment{dicttable}{%
+  \begin{longtable}{| p{0.08\textwidth} | p{0.20\textwidth} | p{0.62\textwidth} |}
+  \hline \rowcolor{hdrgrey}\textbf{Acronym} & \textbf{Name} & \textbf{Description} \\ \hline\hline
+  \endfirsthead
+  \hline \rowcolor{hdrgrey}\textbf{Acronym} & \textbf{Name} & \textbf{Description} \\ \hline\hline \endhead}%
+  {\hline\end{longtable}}

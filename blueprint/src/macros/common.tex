@@ -31,7 +31,12 @@
 \newcommand{\Real}{\mathbb{R}}
 \newcommand{\Nat}{\mathbb{N}}
 
-\newcommand{\attr}[1]{\texttt{#1}}              % contract attribute
+\newcommand{\attr}[1]{\texttt{#1}}              % contract attribute (plain; math-safe)
+% Linked contract attribute: \hyperlink to the term's \hypertarget in the Data
+% Dictionary.  gen_glossary.py rewrites prose (text-mode) \attr{CODE} to
+% \attrl{CODE} only where CODE has a dictionary entry; it is never emitted
+% inside $...$, so it stays MathJax-safe in the web build.
+\newcommand{\attrl}[1]{\hyperlink{term:#1}{\texttt{#1}}}
 \newcommand{\svar}[2]{\ensuremath{\mathbf{#1}_{#2}}}  % state variable  Nt_{t}
 % Plain/primed convention inside a state transition: a plain symbol is the
 % pre-event value (the standard's t^-), a primed symbol the post-event value

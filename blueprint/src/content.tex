@@ -127,7 +127,7 @@ $\alpha$ (an ordered field for the metatheorems, \texttt{Float} for the engine).
         with $t_i<t_{i+1}$.  Cycles have the form $NPS$ ($N$ an integer, $P\in
         \{D,W,M,Q,H,Y\}$ a period unit, $S\in\{+,-\}$ a stub rule).  An optional
         boolean $B$ in $\sdll{s}{c}{T}{B}$ controls whether the end date $T$
-        belongs to the schedule, and the \attr{EOMC}/\attr{BDC} conventions
+        belongs to the schedule, and the \attrl{EOMC}/\attrl{BDC} conventions
         (below) may shift the resulting times, so the sequence need not be
         equidistant.
 \end{definition}
@@ -151,12 +151,12 @@ $\alpha$ (an ordered field for the metatheorems, \texttt{Float} for the engine).
               Actus.Util.Conventions.isBusinessDay}
         \uses{def:schedule}
         \leanok
-        The end-of-month convention \attr{EOMC} fixes whether cyclic times
+        The end-of-month convention \attrl{EOMC} fixes whether cyclic times
         anchored on a short month-end fall on the same day or the month-end; the
-        business-day convention \attr{BDC} shifts a time off a non-business day
+        business-day convention \attrl{BDC} shifts a time off a non-business day
         (following/preceding, modified or not, calculate-before or -after the
         shift); and the business-day calendar $B:t\mapsto\{\text{true,false}\}$,
-        selected by \attr{CLDR}, decides which days are business days
+        selected by \attrl{CLDR}, decides which days are business days
         (\texttt{NoHoliday}, \texttt{MondayToFriday}, \dots).
 \end{definition}
 
@@ -175,7 +175,7 @@ $\alpha$ (an ordered field for the metatheorems, \texttt{Float} for the engine).
         The contract-role sign $R:\attr{CNTRL}\to\{-1,+1\}$ maps a contract role
         to $+1$ for a claim (asset) or $-1$ for an obligation, fixing the
         direction of every role-sensitive cash flow and state (a positive flow
-        runs from \attr{CPID} to \attr{CRID}).  E.g.\ $\attr{RPA}\mapsto+1$,
+        runs from \attrl{CPID} to \attrl{CRID}).  E.g.\ $\attr{RPA}\mapsto+1$,
         $\attr{RPL}\mapsto-1$, $\attr{GUA}\mapsto-1$, $\attr{OBL}\mapsto+1$.  We
         abbreviate $\sgn$.
 \end{definition}
@@ -198,8 +198,8 @@ $\alpha$ (an ordered field for the metatheorems, \texttt{Float} for the engine).
 \begin{definition}[Canonical payoff and settlement FX]\label{def:settlement}
         The canonical payoff of a contract aggregates all future event payoffs
         under frozen risk-factor conditions, $\payoff{x}{t}=\sum_{c\in C}c$.
-        When a contract settles in a currency \attr{CURS} other than its
-        denomination \attr{CUR}, payoffs are scaled by the settlement FX rate
+        When a contract settles in a currency \attrl{CURS} other than its
+        denomination \attrl{CUR}, payoffs are scaled by the settlement FX rate
         \[
           X_{\attr{CUR}}^{\attr{CURS}}(t)=\left\{\begin{array}{@{}l@{\quad}l@{}}
             1 & \text{if } \attr{CURS}=\nul \lor \attr{CURS}=\attr{CUR}\\
@@ -253,11 +253,11 @@ Lean \texttt{stf}/\texttt{pof}/\texttt{Step} definitions that formalize them.
 
 PAM is the archetypal ACTUS contract and the building block of the whole
 maturity family.  The entire principal (notional) is advanced at the initial
-exchange date \attr{IED} and returned in a single bullet repayment at maturity
-\attr{MD}; in between, interest accrues continuously and is paid out on the
+exchange date \attrl{IED} and returned in a single bullet repayment at maturity
+\attrl{MD}; in between, interest accrues continuously and is paid out on the
 interest-payment schedule \attr{IP}.  No principal is amortized during the term,
-so the outstanding notional \svar{Nt}{} stays constant between \attr{IED} and
-\attr{MD} --- which makes PAM the natural model for fixed-term bonds, bullet
+so the outstanding notional \svar{Nt}{} stays constant between \attrl{IED} and
+\attrl{MD} --- which makes PAM the natural model for fixed-term bonds, bullet
 loans and term deposits.
 
 The contract state carries the outstanding notional \svar{Nt}{}, the nominal
@@ -267,7 +267,7 @@ features layer on through their own events: rate resets (\attr{RR}/\attr{RRF},
 optionally clamped to the life window $[\attr{RRLF},\attr{RRLC}]$), index
 scaling (\attr{SC}), periodic fees (\attr{FP}), prepayment penalties
 (\attr{PY}), unscheduled prepayment (\attr{PP}) and early termination
-(\attr{TD}).  Because every other lending contract (LAM, NAM, ANN, CLM) is
+(\attrl{TD}).  Because every other lending contract (LAM, NAM, ANN, CLM) is
 specified as PAM plus a redemption rule, the PAM state-transition and payoff
 functions below are reused throughout the family.
 
@@ -422,11 +422,11 @@ shrinks over time while the principal portion stays constant --- the classic
 constant-amortization loan.
 
 LAM, NAM and ANN share PAM's machinery and differ only in how the redemption is
-sized: LAM fixes the principal portion (\attr{PRNXT}); NAM fixes the total
+sized: LAM fixes the principal portion (\attrl{PRNXT}); NAM fixes the total
 payment and lets principal absorb whatever is left after interest; ANN fixes the
 total payment through the annuity formula.  The LAM tables below therefore
 record only what differs from PAM --- chiefly the \attr{PR} redemption and the
-interest-calculation-base bookkeeping (\attr{IPCB}) that tracks the balance on
+interest-calculation-base bookkeeping (\attrl{IPCB}) that tracks the balance on
 which interest is charged.
 
 \begin{definition}[AMORTIZERS]\label{def:amortizers}
@@ -743,7 +743,7 @@ of the currently active segment.
 \subsection{NAM: Negative Amortizer}\label{sec:nam}
 
 In a negative amortizer the borrower pays a fixed total instalment
-(\attr{PRNXT}) each period, out of which interest is served first and only the
+(\attrl{PRNXT}) each period, out of which interest is served first and only the
 remainder reduces principal.  When the instalment exceeds the interest due the
 loan amortizes normally; when interest exceeds the instalment the shortfall is
 capitalized and the outstanding notional actually \emph{grows} --- hence
@@ -828,7 +828,7 @@ annuities the standard structure for consumer credit and mortgage lending.
 Because the instalment depends on the prevailing rate, a rate reset (\attr{RR})
 triggers a re-amortization: the annuity amount is recomputed from the current
 balance, the new rate and the remaining redemption schedule so the contract
-still amortizes to zero by \attr{MD}.  Apart from this re-sizing, ANN reuses
+still amortizes to zero by \attrl{MD}.  Apart from this re-sizing, ANN reuses
 PAM's rate, interest and fee logic --- which is why the rate-bound metatheorem
 (\ref{thm:rate-bound}) carries over to ANN for free.
 
@@ -948,7 +948,7 @@ that capitalizes rather than being paid out, and no scheduled maturity.  The
 holder may add to or withdraw from the balance, and on termination the account
 settles at its agreed value plus accrued interest.
 
-Like CLM, UMP has no \attr{MD}; interest accrues on the running balance and is
+Like CLM, UMP has no \attrl{MD}; interest accrues on the running balance and is
 capitalized into it.  It is formalized jointly with LAX as \ref{def:laxump},
 since both reduce to array-schedule executions of the shared engine.
 
@@ -1008,8 +1008,8 @@ its tables below are essentially empty.
 \subsection{STK: Stock}\label{sec:stk}
 
 A stock contract models an equity position.  It is acquired at the purchase
-date \attr{PRD} for the price observed then and disposed of at the termination
-date \attr{TD} for the price observed at termination, collecting any dividends
+date \attrl{PRD} for the price observed then and disposed of at the termination
+date \attrl{TD} for the price observed at termination, collecting any dividends
 (\attr{DV}) in between as observed cash flows.  A holding has no natural end, so
 the analysis horizon $\tmax$ bounds an otherwise open position.
 
@@ -1023,7 +1023,7 @@ long/short role.  It shares its definition with the commodity position
               Actus.Contract.Execution.stkCashflows}
         \uses{def:sign}
         \leanok
-        COM (commodity, \S\ref{sec:com}) and STK (stock): a purchase (\attr{PRD}) and termination (\attr{TD}) at the observed price, plus observed dividends (\attr{DV}) for stock.  (CSH, \S\ref{sec:csh}, has no scheduled cash flow.)
+        COM (commodity, \S\ref{sec:com}) and STK (stock): a purchase (\attrl{PRD}) and termination (\attrl{TD}) at the observed price, plus observed dividends (\attr{DV}) for stock.  (CSH, \S\ref{sec:csh}, has no scheduled cash flow.)
 \end{definition}
 
 \begin{contract}{STK}
@@ -1051,7 +1051,7 @@ long/short role.  It shares its definition with the commodity position
 \subsection{COM: Commodity}\label{sec:com}
 
 A commodity position is an equity-style holding without income: it is bought
-at \attr{PRD} and sold at \attr{TD} at the prices observed on those dates, with
+at \attrl{PRD} and sold at \attrl{TD} at the prices observed on those dates, with
 no intervening dividends.  It models physical-commodity or simple spot holdings
 and, like STK, is a stateless builder over observed prices.  Formalized with STK
 as \ref{def:position}.
@@ -1071,7 +1071,7 @@ as \ref{def:position}.
 
 An FX outright is an agreement to exchange two fixed notionals in different
 currencies on a single future settlement date at a pre-agreed rate.  One leg
-delivers \attr{NT} units of the base currency and the other delivers the
+delivers \attrl{NT} units of the base currency and the other delivers the
 counter-currency amount; settlement may be physical (both legs exchanged) or in
 net cash.
 
@@ -1804,3 +1804,5 @@ quantitative bounds and conservation laws hold of every execution.
         covered claim; the covered exposure, a sum of per-leg magnitudes, is
         non-negative, so the payout carries the contract-role sign.
 \end{theorem}
+
+\input{glossary}
