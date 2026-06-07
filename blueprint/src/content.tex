@@ -22,12 +22,13 @@ definition to a Lean~4 formalization, so that the document is at once the
 specification and its proof of internal consistency.
 
 It covers all eighteen contract types of the standard (\S\ref{sec:contracts}).
-The stateful lending family (PAM, LAM, NAM, ANN, CLM) is modeled twice ---
-relationally (the inductive \texttt{Step}, the readable spec) and functionally
-(computable state-transition and payoff functions), with the two proven to
-agree.  The remaining types --- positions, derivatives, swaps, credit
-enhancement, and the exotic amortizer --- are direct cash-flow builders over the
-shared schedule-generation engine.
+Every \emph{stateful} contract --- the lending family (PAM, LAM, NAM, ANN, CLM)
+together with the exotic amortizer LAX, the plain-vanilla swap SWPPV and the
+non-maturity deposit UMP --- is modeled twice: relationally (the inductive
+\texttt{Step}, the readable spec) and functionally (computable state-transition
+and payoff functions), with the two proven to agree.  The remaining types ---
+positions, derivatives, composite swaps (SWAPS), and credit enhancement --- are
+direct cash-flow builders over the shared schedule-generation engine.
 
 The whole development is generic over the amount type and instantiated twice:
 at \texttt{Float} for the executable engine --- validated against the ACTUS
@@ -606,17 +607,24 @@ into segments, each with its own anchor, cycle, rate and redemption amount.
 This captures structured loans with grace periods, step-ups, balloon segments
 and draw phases that a single cyclic schedule cannot express.
 
-Within each segment the dynamics are exactly those of LAM; the array schedule
-simply concatenates the per-segment cyclic schedules, so the state-transition
-and payoff functions reduce to the PAM/LAM ones evaluated against the parameters
-of the currently active segment.
+Within each segment the dynamics follow LAM; the array schedule concatenates the
+per-segment cyclic schedules.  LAX carries the same dual model as the lending
+family: its own state-transition and payoff functions \texttt{LAX.stf}/%
+\texttt{LAX.pof} (generalised with a per-event payload --- the array redemption
+amount, or the reset rate), together with a relational \texttt{LAX.Step} proven
+to be their graph.  The executable builder folds \texttt{stf}/\texttt{pof} over
+the array-derived event list, so the relation certifies the engine.
 
 \begin{definition}[LAXUMP]\label{def:laxump}
-        \lean{Actus.Contract.Execution.laxCashflows,
+        \lean{Actus.Contract.LAX.stf,
+              Actus.Contract.LAX.Step,
+              Actus.Contract.UMP.stf,
+              Actus.Contract.UMP.Step,
+              Actus.Contract.Execution.laxCashflows,
               Actus.Contract.Execution.umpCashflows}
         \uses{def:amortizers, def:annuity}
         \leanok
-        LAX (exotic amortizer) redeems or draws principal on piecewise array schedules; UMP (\S\ref{sec:ump}) is a non-maturity deposit whose interest capitalizes, settling at the agreed price plus accrued interest on termination.
+        LAX (exotic amortizer) redeems or draws principal on piecewise array schedules; UMP (\S\ref{sec:ump}) is a non-maturity deposit whose interest capitalizes, settling at the agreed price plus accrued interest on termination.  Both carry the relational \texttt{Step} and functional \texttt{stf}/\texttt{pof} models (proven to agree), alongside their executable builders.
 \end{definition}
 
 \begin{contract}{LAX}
@@ -949,8 +957,10 @@ holder may add to or withdraw from the balance, and on termination the account
 settles at its agreed value plus accrued interest.
 
 Like CLM, UMP has no \attrl{MD}; interest accrues on the running balance and is
-capitalized into it.  It is formalized jointly with LAX as \ref{def:laxump},
-since both reduce to array-schedule executions of the shared engine.
+capitalized into it (\texttt{IPCI}), the deposit settling at \attr{PTD} plus the
+accrued interest on termination.  UMP carries the dual relational/functional
+model (\texttt{UMP.Step}, \texttt{UMP.stf}/\texttt{pof}); it is documented
+jointly with LAX as \ref{def:laxump}.
 
 \begin{contract}{UMP}
 	\rowcolor{hdrgrey}\multicolumn{4}{|l|}{\textbf{State Variables}} \\ \hline
@@ -1129,15 +1139,21 @@ difference).
 
 The net settlement is exactly $R\cdot N\cdot(\attr{fix}-\attr{flt})\cdot Y$,
 which the formalization proves equals the difference of the two gross legs
-(\ref{thm:conservation-deriv}).  SWPPV and the general SWAPS are formalized as
-\ref{def:swap}.
+(\ref{thm:conservation-deriv}).  SWPPV is given the dual model
+(\texttt{SWPPV.Step}, \texttt{SWPPV.stf}/\texttt{pof}): a period emits the two
+legs \texttt{IPFX}/\texttt{IPFL} (the floating leg advances the period boundary
+\svar{Sd}{}; a rate reset \texttt{RR} only repricings the floating rate), and the
+relation is proven to be the graph of \texttt{stf}.  SWPPV and the composite
+SWAPS are formalized as \ref{def:swap}.
 
 \begin{definition}[SWAP]\label{def:swap}
-        \lean{Actus.Contract.Execution.swppvCashflows,
+        \lean{Actus.Contract.SWPPV.stf,
+              Actus.Contract.SWPPV.Step,
+              Actus.Contract.Execution.swppvCashflows,
               Actus.Contract.Execution.swapsCashflows}
         \uses{def:amortizers}
         \leanok
-        SWPPV pays a fixed and a floating interest leg per period; SWAPS (\S\ref{sec:swaps}) is a composite of two child legs run by the ordinary engine and combined gross or net.
+        SWPPV pays a fixed and a floating interest leg per period (with the relational \texttt{Step} and functional \texttt{stf}/\texttt{pof} models, proven to agree); SWAPS (\S\ref{sec:swaps}) is a composite of two child legs run by the ordinary engine and combined gross or net.
 \end{definition}
 
 \begin{contract}{SWPPV}
@@ -1669,12 +1685,19 @@ maturity zeroes the notional, and --- over $\mathbb{R}$ --- a battery of
 quantitative bounds and conservation laws hold of every execution.
 
 \begin{theorem}[Relational/functional agreement]\label{thm:agree}
-        \lean{Actus.Contract.Agree.pam_step_to_fun}
-        \uses{def:pam-step}
+        \lean{Actus.Contract.Agree.pam_step_to_fun,
+              Actus.Contract.Agree.lam_step_to_fun,
+              Actus.Contract.Agree.nam_step_to_fun,
+              Actus.Contract.Agree.ann_step_to_fun,
+              Actus.Contract.Agree.ump_step_to_fun,
+              Actus.Contract.Agree.lax_step_to_fun,
+              Actus.Contract.Agree.swppv_step_to_fun}
+        \uses{def:pam-step, def:amortizers, def:laxump, def:swap}
         \leanok
-        Every relational PAM step lands on the functional next-state for some
-        event and time; conversely every admissible event/time yields a step.
-        The relation is exactly the graph of \texttt{stf}.
+        For each of the eight stateful contracts (PAM, LAM, NAM, ANN, CLM and
+        LAX, SWPPV, UMP) every relational step lands on the functional next-state
+        for some event and time; conversely every admissible event/time yields a
+        step.  Each relation is exactly the graph of its \texttt{stf}.
 \end{theorem}
 
 \begin{theorem}[Status-date monotonicity]\label{thm:mono}
@@ -1698,14 +1721,16 @@ quantitative bounds and conservation laws hold of every execution.
 \begin{theorem}[Rate cap/floor bound]\label{thm:rate-bound}
         \lean{Actus.Contract.Properties.pam_rr_rate_mem,
               Actus.Contract.Properties.ann_rr_rate_mem,
+              Actus.Contract.Properties.swppv_rr_rate_mem,
               Actus.Contract.Properties.clamp_mem}
-        \uses{def:pam-stf, def:amortizers}
+        \uses{def:pam-stf, def:amortizers, def:swap}
         \leanok
         After a rate reset the nominal rate lies within the life floor/cap
         window $[\mathtt{RRLF}, \mathtt{RRLC}]$ (whenever both are present and
-        well-ordered).  Holds for PAM and, by reuse of PAM's rate logic, for
-        ANN.  With every cap/floor absent the reset instead returns the raw
-        repricing target $O^{rf}(\mathtt{RRMO},t)\cdot\mathtt{RRMLT}+\mathtt{RRSP}$
+        well-ordered).  Holds for PAM, for ANN (by reuse of PAM's rate logic),
+        and for SWPPV's floating-rate reset.  With every cap/floor absent the
+        reset instead returns the raw repricing target
+        $O^{rf}(\mathtt{RRMO},t)\cdot\mathtt{RRMLT}+\mathtt{RRSP}$
         (\texttt{pam\_rr\_uncapped}).
 \end{theorem}
 
@@ -1764,6 +1789,65 @@ quantitative bounds and conservation laws hold of every execution.
         trace, so this is a statement about real runs.
 \end{theorem}
 
+\begin{definition}[Capitalization trace]\label{def:ipcitrace}
+        \lean{Actus.Contract.Properties.IPCITrace,
+              Actus.Contract.Properties.ipciFactor}
+        \uses{def:laxump}
+        \leanok
+        \texttt{IPCITrace} is the chain of zero or more admissible interest
+        capitalizations (\texttt{IPCI}) of a UMP deposit; \texttt{ipciFactor}
+        accumulates the multiplicative growth factor
+        $\prod_i (1 + \mathtt{rate}\cdot Y_i)$ along it.
+\end{definition}
+
+\begin{theorem}[UMP compound-growth closed form]\label{thm:ump-growth}
+        \lean{Actus.Contract.Properties.ump_ipci_closed_form,
+              Actus.Contract.Properties.ipciTrace_ipnr,
+              Actus.Contract.Properties.ump_ipci_nondecr}
+        \uses{def:ipcitrace}
+        \leanok
+        Along a capitalization trace the notional grows multiplicatively to
+        $\mathtt{Nt}' = \mathtt{Nt}_0 \cdot \prod_i (1 + \mathtt{rate}\cdot Y_i)$;
+        the nominal rate is invariant under \texttt{IPCI} (justifying the single
+        $\mathtt{rate}$), and with a non-negative rate and year fraction each
+        capitalization never shrinks the deposit.
+\end{theorem}
+
+\begin{definition}[LAX redemption trace]\label{def:laxprtrace}
+        \lean{Actus.Contract.Properties.LAXPRTrace}
+        \uses{def:laxump}
+        \leanok
+        \texttt{LAXPRTrace} is the chain of zero or more admissible LAX principal
+        redemptions (\texttt{PR}) with non-negative instalments.
+\end{definition}
+
+\begin{theorem}[LAX monotone amortization]\label{thm:lax-amort}
+        \lean{Actus.Contract.Properties.lax_pr_nt_le,
+              Actus.Contract.Properties.laxPRTrace_nt_le,
+              Actus.Contract.Properties.laxPRTrace_isTrace}
+        \uses{def:laxprtrace}
+        \leanok
+        On the long side ($\mathrm{sign} \ge 0$) a LAX redemption with a
+        non-negative instalment never increases the notional, so along an entire
+        redemption trace $\mathtt{Nt}' \le \mathtt{Nt}_0$ (monotone repayment).
+        Unlike LAM's capped \texttt{redeemed} this is a one-sided bound, since
+        \texttt{STF\_PR\_LAX} subtracts the raw instalment.  Every such trace is a
+        genuine LAX execution.
+\end{theorem}
+
+\begin{theorem}[Swap structural invariants]\label{thm:swap-inv}
+        \lean{Actus.Contract.Properties.swppv_stf_nt,
+              Actus.Contract.Properties.swppv_ipnr_only_rr,
+              Actus.Contract.Properties.swppv_trace_mono}
+        \uses{def:swap}
+        \leanok
+        A swap exchanges interest, not principal: no SWPPV event moves the
+        notional, and only a rate reset (\texttt{RR}) changes the floating rate.
+        Status dates are non-decreasing along any execution (even though the
+        fixed leg and reset leave \svar{Sd}{} untouched and only the floating leg
+        advances it).
+\end{theorem}
+
 \subsection{Payoff bounds for the derivative and credit families (over $\mathbb{R}$)}
 
 \begin{theorem}[Cap/floor and option intrinsics are non-negative]\label{thm:intrinsic}
@@ -1782,14 +1866,18 @@ quantitative bounds and conservation laws hold of every execution.
 
 \begin{theorem}[Settlement conservation for FX and swaps]\label{thm:conservation-deriv}
         \lean{Actus.Contract.Properties.fxout_delivery_sum,
-              Actus.Contract.Properties.swppv_net_eq_legs}
+              Actus.Contract.Properties.swppv_net_eq_legs,
+              Actus.Contract.Properties.swppv_pof_net,
+              Actus.Contract.Properties.swppv_par_net_zero}
         \uses{def:swap, def:derivative}
         \leanok
         An FX outright's two delivery legs net to the par difference
         $R \cdot (\mathtt{Nt_1} - \mathtt{Nt_2})$ at unit FX; a swap's per-period
         fixed and floating legs net to $R \cdot N \cdot (\mathtt{fix} -
         \mathtt{flt}) \cdot Y$ --- exactly what the net-settlement fold computes
-        from the two gross legs.
+        from the two gross legs.  For SWPPV this is now proven on the actual
+        \texttt{stf}/\texttt{pof} state machine (\texttt{swppv\_pof\_net}), and at
+        par ($\mathtt{fix}=\mathtt{flt}$) the netted period flow is zero.
 \end{theorem}
 
 \begin{theorem}[Credit-enhancement payout bounds]\label{thm:credit-bound}

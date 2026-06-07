@@ -1,7 +1,114 @@
 /- ## Swap contracts: SWPPV (plain-vanilla IRS) and SWAPS (composite of legs). -/
 
+import Actus.Protocol
+import Actus.Abstract
+import Actus.Closures
 import Actus.Contract.Engine
 import Actus.Contract.Lending
+import Actus.Util.Conventions
+
+-- ---------------------------------------------------------------------------
+-- SWPPV — relational + functional model (plain-vanilla interest-rate swap)
+-- ---------------------------------------------------------------------------
+
+namespace Actus.Contract.SWPPV
+
+open Actus.Protocol
+open Actus.Abstract
+open Actus.Closures
+open Actus.Contract
+open Actus.Util.Conventions (sign)
+open Actus (Amount)
+
+variable {α : Type} [Amount α]
+
+/- A plain-vanilla interest-rate swap.  Each interest period pays two legs: a
+    fixed leg `IPFX = sign·N·fixedRate·Y` and a floating leg
+    `IPFL = −sign·N·floatRate·Y`, where `fixedRate = nominalInterestRate`,
+    `floatRate` starts at `nominalInterestRate2` and is reset by `RR` events to
+    `clamp_{[lifeFloor,lifeCap]}(Oʳᶠ(RRMO)·RRMLT + RRSP)`.
+
+    The state carries the signed notional `Nt`, the current floating rate `Ipnr`
+    and the period-start `Sd` (advanced by the floating leg `IPFL`, which fires
+    last among a period's two legs).  Because `IPFL` advances `Sd` while `IPFX`
+    leaves it untouched, both legs of a period see the same `Y(Sd, t)`; an `RR`
+    fires *after* both legs at a shared timestamp, so it only affects later
+    periods (matching the spec's "latest reset strictly before `t`"). -/
+
+/-- Rate reset: install the clamped market floating rate. -/
+def stf_RR (ct : Terms α) (rf : RiskFactorEnv α) (t : Time) (s : State α) : State α :=
+  { s with ipnr := clampHi ct.lifeCap (clampLo ct.lifeFloor
+                     (rf.marketRate t * Terms.rrmlt ct + Terms.rrsp ct)) }
+
+/-- STF dispatcher.  The floating leg advances the period boundary `Sd`; the
+    fixed leg (and any other event) leaves the state untouched. -/
+def stf (ct : Terms α) (rf : RiskFactorEnv α) (e : EventType) (t : Time) (s : State α) : State α :=
+  match e with
+  | .IPFL => { s with sd := t }
+  | .RR   => stf_RR ct rf t s
+  | _     => s
+
+def pof_IPFX (ct : Terms α) (rf : RiskFactorEnv α) (t : Time) (s : State α) : α :=
+  s.nt * Terms.ipnr ct * rf.yf s.sd t
+
+def pof_IPFL (rf : RiskFactorEnv α) (t : Time) (s : State α) : α :=
+  (-1) * s.nt * s.ipnr * rf.yf s.sd t
+
+def pof (ct : Terms α) (rf : RiskFactorEnv α) (e : EventType) (t : Time) (s : State α) : α :=
+  match e with
+  | .IPFX => pof_IPFX ct rf t s
+  | .IPFL => pof_IPFL rf t s
+  | _     => 0   -- RR / clock ticks
+
+/-- Initial state: signed notional, floating rate at `nominalInterestRate2`,
+    period start at `IED`. -/
+def init (ct : Terms α) (iedT : Time) : State α :=
+  { md    := 0
+    nt    := sign (Terms.cntrl ct) * Terms.nt ct
+    ipnr  := ct.nominalInterestRate2.getD 0
+    ipac  := 0
+    feac  := 0
+    nsc   := 1
+    isc   := 1
+    prnxt := 0
+    ipcb  := 0
+    prf   := ct.contractPerformance.getD .PRF_PF
+    sd    := iedT }
+
+-- ---------------------------------------------------------------------------
+-- Relational model
+-- ---------------------------------------------------------------------------
+
+/-- One-step SWPPV transition.  `t` is explicit (a period may emit two legs at
+    the same `t`, so the cash-flow time is taken from `t` rather than `Sd`). -/
+inductive Step (ct : Terms α) (rf : RiskFactorEnv α) : State α → State α → Type where
+  | ev : ∀ {s : State α} (e : EventType) (t : Time), s.sd ≤ t →
+         Step ct rf s (stf ct rf e t s)
+
+abbrev Trace (ct : Terms α) (rf : RiskFactorEnv α) := Star (Step ct rf)
+
+def getCashflow (ct : Terms α) (rf : RiskFactorEnv α) {s s' : State α}
+    (h : Step ct rf s s') : Event × α :=
+  match h with
+  | .ev e t _ => ((t, e), pof ct rf e t s)
+
+def getCashflows (ct : Terms α) (rf : RiskFactorEnv α) :
+    ∀ {s s' : State α}, Trace ct rf s s' → List (Event × α)
+  | _, _, .refl        => []
+  | _, _, .step h rest => getCashflow ct rf h :: getCashflows ct rf rest
+
+def SWPPV_contract : ActusContract := { Terms := Terms Float, State := State Float }
+
+def SWPPV_impl (ct : Terms Float) (rf : RiskFactorEnv Float) (s₀ : State Float) :
+    StateTransition SWPPV_contract :=
+  { s₀ := s₀, rel := Step ct rf
+    getCashflow := fun h r => let _ := r; getCashflow ct rf h }
+
+end Actus.Contract.SWPPV
+
+-- ---------------------------------------------------------------------------
+-- Executable builders
+-- ---------------------------------------------------------------------------
 
 namespace Actus.Contract.Execution
 
@@ -9,40 +116,38 @@ open Actus.Protocol
 open Actus.Util
 open Actus.Contract
 
-/-- SWPPV — a plain-vanilla interest-rate swap (single contract).  Each interest
-    period pays two legs: a fixed leg `IPFX = sign·N·fixedRate·Y` and a floating
-    leg `IPFL = −sign·N·floatRate·Y`, where `fixedRate = nominalInterestRate`,
-    `floatRate` starts at `nominalInterestRate2` and is reset by `RR` events to
-    `O^rf(RRMO)·RRMLT + RRSP` (clamped).  `IED`/`MD` exchange no principal
-    (payoff 0).  Gross (`D`) emits both legs; net (`S`) sums them per period. -/
+/-- SWPPV cash flows.  Each interest period emits a fixed (`IPFX`) and floating
+    (`IPFL`) leg; rate resets (`RR`) update the floating rate.  The events are
+    folded through `SWPPV.stf`/`SWPPV.pof`; at a shared timestamp they are
+    ordered `IPFX`, `IPFL`, then `RR`, so both legs read the pre-reset rate and
+    the same period year-fraction.  Gross (`D`) keeps both legs; net (`S`) sums
+    them per period into one `IP`. -/
 def swppvCashflows (ct : Terms Float) (rf : RiskFactorEnv Float) : Cashflows :=
   let rf := { rf with yf := fun a b => yf ct a b }
   match ct.initialExchangeDate, ct.maturityDate with
   | some ied, some md =>
-    let s      := Conventions.sign (α := Float) ct.contractRole
-    let n      := Terms.nt ct
-    let fixed  := Terms.ipnr ct
-    let float0 := ct.nominalInterestRate2.getD 0
-    let cfg    := ct.scheduleConfig
-    let iedT   := toTime ied
+    let s    := Conventions.sign (α := Float) ct.contractRole
+    let cfg  := ct.scheduleConfig
+    let iedT := toTime ied
     -- interest-payment dates (anchored cycle, up to & incl. maturity)
     let ipDates := (cyclicTimes cfg ct.cycleAnchorDateOfInterestPayment
                       ct.cycleOfInterestPayment ct.initialExchangeDate (some md) true).filter
                       (fun t => Nat.blt iedT t)
-    -- rate-reset dates; the floating rate in force at `t` is the latest reset
-    -- strictly before `t` (else the initial `nominalInterestRate2`)
+    -- rate-reset dates
     let rrDates := cyclicTimes cfg ct.cycleAnchorDateOfRateReset
                      ct.cycleOfRateReset ct.initialExchangeDate (some md) false
-    let floatAt := fun (t : Time) =>
-      match (rrDates.filter (fun r => Nat.blt r t)).reverse.head? with
-      | some r => clampHi ct.lifeCap (clampLo ct.lifeFloor
-                    (rf.marketRate r * Terms.rrmlt ct + Terms.rrsp ct))
-      | none   => float0
-    let bounds := iedT :: ipDates
-    let flows := ((bounds.zip ipDates).map fun p =>
-      let yfp := rf.yf p.1 p.2
-      [((p.2, EventType.IPFX), s * n * fixed * yfp),
-       ((p.2, EventType.IPFL), -s * n * floatAt p.2 * yfp)]).flatten
+    -- events: each payment date emits both legs; each reset date an RR
+    let legEvs : List Event := ipDates.flatMap (fun t => [(t, EventType.IPFX), (t, EventType.IPFL)])
+    let rrEvs  : List Event := rrDates.map (fun t => (t, EventType.RR))
+    -- order chronologically; at a shared time, both legs before the reset so the
+    -- legs read the pre-reset rate (`r < t`) and share the period year-fraction
+    let ord : EventType → Nat := fun e => match e with
+      | .IPFX => 0 | .IPFL => 1 | .RR => 2 | _ => 3
+    let evs := ((legEvs ++ rrEvs).toArray.qsort (fun a b =>
+      if a.1 == b.1 then Nat.blt (ord a.2) (ord b.2) else Nat.blt a.1 b.1)).toList
+    let flows := Execution.runSchedule (SWPPV.stf ct rf) (SWPPV.pof ct rf) (SWPPV.init ct iedT) evs
+    -- RR carries no cash flow
+    let flows := flows.filter (fun c => eventTypePriority c.1.2 != eventTypePriority .RR)
     -- net (cash) settlement sums the two legs of each period into one flow
     let flows := match ct.deliverySettlement with
       | some "S" =>

@@ -18,6 +18,9 @@ import Actus.Contract.PAM
 import Actus.Contract.LAM
 import Actus.Contract.NAM
 import Actus.Contract.ANN
+import Actus.Contract.UMP
+import Actus.Contract.LAX
+import Actus.Contract.Swap
 
 namespace Actus.Contract.Agree
 
@@ -82,5 +85,37 @@ theorem ann_step_to_fun {ct rf} {s s' : State α} (h : ANN.Step ct rf s s') :
 
 def ann_fun_to_step {ct rf} {s : State α} (e : EventType) {t : Time}
     (ht : s.sd ≤ t) : ANN.Step ct rf s (ANN.stf ct rf e t s) := .ev e ht
+
+-- ---------------------------------------------------------------------------
+-- UMP / SWPPV  (single dispatching constructor, standard `stf` signature)
+-- ---------------------------------------------------------------------------
+
+omit [DecidableLE α] in
+theorem ump_step_to_fun {ct rf} {s s' : State α} (h : UMP.Step ct rf s s') :
+    ∃ (e : EventType) (t : Time), s' = UMP.stf ct rf e t s := by
+  cases h with | ev e _ => exact ⟨e, _, rfl⟩
+
+def ump_fun_to_step {ct rf} {s : State α} (e : EventType) {t : Time}
+    (ht : s.sd ≤ t) : UMP.Step ct rf s (UMP.stf ct rf e t s) := .ev e ht
+
+omit [DecidableLE α] in
+theorem swppv_step_to_fun {ct rf} {s s' : State α} (h : SWPPV.Step ct rf s s') :
+    ∃ (e : EventType) (t : Time), s' = SWPPV.stf ct rf e t s := by
+  cases h with | ev e t _ => exact ⟨e, t, rfl⟩
+
+def swppv_fun_to_step {ct rf} {s : State α} (e : EventType) (t : Time)
+    (ht : s.sd ≤ t) : SWPPV.Step ct rf s (SWPPV.stf ct rf e t s) := .ev e t ht
+
+-- ---------------------------------------------------------------------------
+-- LAX  (dispatching constructor with a per-event payload `x`)
+-- ---------------------------------------------------------------------------
+
+omit [DecidableLE α] in
+theorem lax_step_to_fun {ct rf} {s s' : State α} (h : LAX.Step ct rf s s') :
+    ∃ (e : EventType) (x : α) (t : Time), s' = LAX.stf ct rf e x t s := by
+  cases h with | ev e x _ => exact ⟨e, x, _, rfl⟩
+
+def lax_fun_to_step {ct rf} {s : State α} (e : EventType) (x : α) {t : Time}
+    (ht : s.sd ≤ t) : LAX.Step ct rf s (LAX.stf ct rf e x t s) := .ev e x ht
 
 end Actus.Contract.Agree

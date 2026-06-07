@@ -4,22 +4,25 @@ A Lean 4 formalization of the [ACTUS](https://www.actusfrf.org/) standard
 (Algorithmic Contract Types Unified Standards), which represents financial
 contracts as deterministic, cashflow-generating state machines.
 
-This project formalizes the **core lending family** — PAM, LAM, NAM and ANN —
-following the ACTUS technical specification. Each contract is given **two
-models**:
+This project formalizes a broad cross-section of the ACTUS contract taxonomy,
+following the ACTUS technical specification. Every **stateful** contract — the
+lending family **PAM, LAM, NAM, ANN** and **CLM**, together with the **LAX**
+exotic amortizer, the **SWPPV** plain-vanilla swap and the **UMP** non-maturity
+deposit — is given **two models**:
 
 * a **relational** model (`Step`, an inductive transition relation) — the
   readable specification; and
 * a **functional** model (computable state-transition and payoff functions) —
   the executable engine,
 
-and the two are **proven to agree**. Several further contract types are also
-implemented on the same engine — **COM** (commodity), **STK** (stock), **OPTNS**
-(European options), **FUTUR** (futures), **FXOUT** (FX outright), **CSH** (cash)
-and **SWPPV** (plain-vanilla swap), plus partial **CLM** (call money), **SWAPS**
-(swaps) and **UMP** (non-maturity deposit). The engine is validated against the
-ACTUS Foundation's reference test suite: it matches **236 / 236** reference
-contracts exactly across the fully-supported types (all 3155 cash flows).
+and the two are **proven to agree**. The remaining types are implemented on the
+same engine as direct cash-flow builders — **COM** (commodity), **STK** (stock),
+**OPTNS** (European options), **FUTUR** (futures), **FXOUT** (FX outright),
+**CSH** (cash), **CAPFL** (cap/floor), **CEC** (collateral) and **SWAPS**
+(composite swaps), plus partial **CEG** (guarantee). The engine is validated
+against the ACTUS Foundation's reference test suite: it matches **236 / 236**
+reference contracts exactly across the fully-supported types (all 3155 cash
+flows).
 
 The spec is **generic over the amount type**: it runs on native `Float` for the
 executable engine, and on the real numbers `ℝ` (via Mathlib) for the metatheorems
@@ -81,12 +84,13 @@ then use `lake` as above.
 | | `Actus/Util/Conventions.lean` | contract-role sign, end-of-month and business-day conventions |
 | | `Actus/Util/Schedule.lean` | the schedule function `S(s,c,T,B)`, stub correction, and the annuity amount `A` |
 | Contracts (spec) | `Actus/Contract/PAM.lean`, `LAM.lean`, `NAM.lean`, `ANN.lean`, `CLM.lean` | the stateful lending family: per-event `stf`/`pof` functions and the relational `Step` |
+| | `Actus/Contract/LAX.lean`, `Swap.lean` (SWPPV), `UMP.lean` | further stateful contracts with the same dual model — `stf`/`pof` and a relational `Step` — alongside their executable builders |
 | | `Actus/Contract/Common.lean` | shared `State`, terms accessors, and the `RiskFactorEnv` observer interface |
 | Proofs | `Actus/Contract/Agree.lean` | relational ↔ functional agreement (`Step` is the graph of `stf`) |
 | | `Actus/Contract/Properties.lean` | metatheorems: determinism, status-date monotonicity, maturity, payoff bounds |
 | Execution | `Actus/Execution.lean`, `Actus/Contract/Engine.lean` | the type-agnostic core: `runSchedule`, `genSchedule`, and shared cash-flow helpers |
 | | `Actus/Contract/Lending.lean` | executable wrappers for the stateful family (`pamCashflows` … `clmCashflows`) |
-| | `Actus/Contract/{Position,Derivative,Swap,CreditEnh,LAX,UMP}.lean` | per-family cash-flow builders for the stateless types (positions, derivatives, swaps, credit enhancement, exotic amortizer, deposit) |
+| | `Actus/Contract/{Position,Derivative,CreditEnh}.lean` | per-family cash-flow builders for the stateless types (positions, derivatives, credit enhancement) and `SWAPS` (in `Swap.lean`) |
 | | `Actus/Contract/Execution.lean` | façade re-exporting the engine and all builders |
 | I/O | `Actus/IO/Parse.lean` | parser for the `actus-tests` JSON format (terms, risk factors, expected events) |
 | | `Actus/IO/Conformance.lean` | the `conformance` executable |
@@ -108,10 +112,12 @@ conditions (e.g. events do not move backwards in time) attached. `Trace` is its
 reflexive-transitive closure (`Star Step`).
 
 `Actus/Contract/Agree.lean` proves the two coincide — `Step` is exactly
-the graph of `stf` over admissible event/time pairs — so the fast executable
-engine and the clean relational spec cannot drift apart. Determinism then falls
-out as a corollary, and `Properties.lean` proves further structural
-metatheorems.
+the graph of `stf` over admissible event/time pairs — for all eight stateful
+contracts (PAM/LAM/NAM/ANN/CLM and LAX/SWPPV/UMP), so the fast executable engine
+and the clean relational spec cannot drift apart. Determinism then falls out as
+a corollary, and `Properties.lean` proves further structural and quantitative
+metatheorems (status-date monotonicity, maturity-date invariance, rate cap/floor
+bounds, redemption non-overshoot, swap-notional invariance, …).
 
 ### A note on `Float` and `ℝ`
 

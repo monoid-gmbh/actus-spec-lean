@@ -519,4 +519,275 @@ theorem ceg_exposure_nonneg (legs : List ℝ) (h : ∀ x ∈ legs, 0 ≤ x) :
     0 ≤ legs.foldl (· + ·) 0 :=
   foldl_add_nonneg legs 0 le_rfl h
 
+-- ===========================================================================
+-- Metatheorems for the newly relational contracts: UMP, LAX, SWPPV
+--
+-- These now carry a `Step` model proven (in `Agree`) to be the graph of their
+-- `stf`, so the same structural and quantitative metatheory the lending family
+-- enjoys applies to them.  UMP and LAX use the standard dispatcher signature
+-- (LAX with an extra schedule payload `x`); SWPPV emits two legs per period, so
+-- its `IPFX`/`RR` events leave `Sd` untouched and only `IPFL` advances it.
+-- ===========================================================================
+
+-- --- Status-date advance (UMP, LAX) ---------------------------------------
+-- Every UMP/LAX event sets `Sd` to its event time.  (SWPPV's fixed leg / reset
+-- deliberately do *not* advance `Sd`; see `swppv_step_mono` instead.)
+
+theorem ump_stf_sd (e : EventType) (t : Time) (s : State α) :
+    (UMP.stf ct rf e t s).sd = t := by cases e <;> rfl
+
+theorem lax_stf_sd (e : EventType) (x : α) (t : Time) (s : State α) :
+    (LAX.stf ct rf e x t s).sd = t := by cases e <;> rfl
+
+-- --- Status-date monotonicity (one step, then whole trace) ----------------
+
+theorem ump_step_mono {s s' : State α} (h : UMP.Step ct rf s s') : s.sd ≤ s'.sd := by
+  cases h with | ev e ht => rw [ump_stf_sd]; exact ht
+
+theorem lax_step_mono {s s' : State α} (h : LAX.Step ct rf s s') : s.sd ≤ s'.sd := by
+  cases h with | ev e x ht => rw [lax_stf_sd]; exact ht
+
+/-- SWPPV monotonicity holds even though `IPFX`/`RR` keep `Sd`: a step either
+    leaves `Sd` unchanged or advances it to the (admissible) event time. -/
+theorem swppv_step_mono {s s' : State α} (h : SWPPV.Step ct rf s s') : s.sd ≤ s'.sd := by
+  cases h with | ev e t ht => cases e <;> first | exact ht | exact Nat.le_refl _
+
+theorem ump_trace_mono {s s' : State α} (tr : UMP.Trace ct rf s s') : s.sd ≤ s'.sd := by
+  induction tr with
+  | refl => exact Nat.le_refl _
+  | step h _ ih => exact Nat.le_trans (ump_step_mono h) ih
+
+theorem lax_trace_mono {s s' : State α} (tr : LAX.Trace ct rf s s') : s.sd ≤ s'.sd := by
+  induction tr with
+  | refl => exact Nat.le_refl _
+  | step h _ ih => exact Nat.le_trans (lax_step_mono h) ih
+
+theorem swppv_trace_mono {s s' : State α} (tr : SWPPV.Trace ct rf s s') : s.sd ≤ s'.sd := by
+  induction tr with
+  | refl => exact Nat.le_refl _
+  | step h _ ih => exact Nat.le_trans (swppv_step_mono h) ih
+
+-- --- Maturity-date and performance invariants -----------------------------
+
+theorem ump_stf_md (e : EventType) (t : Time) (s : State α) :
+    (UMP.stf ct rf e t s).md = s.md := by cases e <;> rfl
+theorem lax_stf_md (e : EventType) (x : α) (t : Time) (s : State α) :
+    (LAX.stf ct rf e x t s).md = s.md := by cases e <;> rfl
+theorem swppv_stf_md (e : EventType) (t : Time) (s : State α) :
+    (SWPPV.stf ct rf e t s).md = s.md := by cases e <;> rfl
+
+theorem ump_stf_prf (e : EventType) (t : Time) (s : State α) :
+    (UMP.stf ct rf e t s).prf = s.prf := by cases e <;> rfl
+theorem lax_stf_prf (e : EventType) (x : α) (t : Time) (s : State α) :
+    (LAX.stf ct rf e x t s).prf = s.prf := by cases e <;> rfl
+theorem swppv_stf_prf (e : EventType) (t : Time) (s : State α) :
+    (SWPPV.stf ct rf e t s).prf = s.prf := by cases e <;> rfl
+
+/-- **Swap notional is never exchanged.**  No SWPPV event moves the notional —
+    only the period boundary `Sd` (via `IPFL`) and the floating rate (via `RR`)
+    change.  A swap exchanges interest, not principal. -/
+theorem swppv_stf_nt (e : EventType) (t : Time) (s : State α) :
+    (SWPPV.stf ct rf e t s).nt = s.nt := by cases e <;> rfl
+
+-- --- Determinism (corollary of relational ↔ functional agreement) ---------
+
+theorem ump_step_det {s s₁ s₂ : State α} {e : EventType} {t : Time}
+    (he₁ : s₁ = UMP.stf ct rf e t s) (he₂ : s₂ = UMP.stf ct rf e t s) : s₁ = s₂ :=
+  he₁.trans he₂.symm
+theorem lax_step_det {s s₁ s₂ : State α} {e : EventType} {x : α} {t : Time}
+    (he₁ : s₁ = LAX.stf ct rf e x t s) (he₂ : s₂ = LAX.stf ct rf e x t s) : s₁ = s₂ :=
+  he₁.trans he₂.symm
+theorem swppv_step_det {s s₁ s₂ : State α} {e : EventType} {t : Time}
+    (he₁ : s₁ = SWPPV.stf ct rf e t s) (he₂ : s₂ = SWPPV.stf ct rf e t s) : s₁ = s₂ :=
+  he₁.trans he₂.symm
+
+-- --- One cashflow per step ------------------------------------------------
+
+theorem ump_cashflows_length {s s' : State α} (tr : UMP.Trace ct rf s s') :
+    (UMP.getCashflows ct rf tr).length = traceLen tr := by
+  induction tr with
+  | refl => rfl
+  | step h rest ih => simp [UMP.getCashflows, traceLen, List.length_cons, ih]
+theorem lax_cashflows_length {s s' : State α} (tr : LAX.Trace ct rf s s') :
+    (LAX.getCashflows ct rf tr).length = traceLen tr := by
+  induction tr with
+  | refl => rfl
+  | step h rest ih => simp [LAX.getCashflows, traceLen, List.length_cons, ih]
+theorem swppv_cashflows_length {s s' : State α} (tr : SWPPV.Trace ct rf s s') :
+    (SWPPV.getCashflows ct rf tr).length = traceLen tr := by
+  induction tr with
+  | refl => rfl
+  | step h rest ih => simp [SWPPV.getCashflows, traceLen, List.length_cons, ih]
+
+-- --- Cashflow stamp and type ----------------------------------------------
+-- UMP/LAX stamp at the post-state status date (`= t`); SWPPV stamps at the
+-- event time `t` directly (a period's two legs share one timestamp).
+
+theorem ump_cashflow_time {s s' : State α} (h : UMP.Step ct rf s s') :
+    (UMP.getCashflow ct rf h).1.1 = s'.sd := by cases h with | ev _ _ => rfl
+theorem lax_cashflow_time {s s' : State α} (h : LAX.Step ct rf s s') :
+    (LAX.getCashflow ct rf h).1.1 = s'.sd := by cases h with | ev _ _ _ => rfl
+theorem swppv_cashflow_time {s : State α} (e : EventType) (t : Time) (h : s.sd ≤ t) :
+    (SWPPV.getCashflow ct rf (.ev e t h)).1.1 = t := rfl
+
+theorem ump_cashflow_type {s : State α} (e : EventType) {t : Time} (h : s.sd ≤ t) :
+    (UMP.getCashflow ct rf (.ev e h)).1.2 = e := rfl
+theorem lax_cashflow_type {s : State α} (e : EventType) (x : α) {t : Time} (h : s.sd ≤ t) :
+    (LAX.getCashflow ct rf (.ev e x h)).1.2 = e := rfl
+theorem swppv_cashflow_type {s : State α} (e : EventType) (t : Time) (h : s.sd ≤ t) :
+    (SWPPV.getCashflow ct rf (.ev e t h)).1.2 = e := rfl
+
+-- --- LAX principal moves: redemption / draw / maturity --------------------
+
+/-- A LAX redemption reduces the notional by exactly the (signed) instalment. -/
+theorem lax_pr_nt (x : α) (t : Time) (s : State α) :
+    (LAX.stf_PR ct rf x t s).nt = s.nt - sign (Terms.cntrl ct) * x := rfl
+/-- A LAX draw increases the notional by exactly the (signed) draw. -/
+theorem lax_pi_nt (x : α) (t : Time) (s : State α) :
+    (LAX.stf_PI ct rf x t s).nt = s.nt + sign (Terms.cntrl ct) * x := rfl
+/-- LAX maturity pays out and zeroes the residual notional. -/
+theorem lax_md_nt (t : Time) (s : State α) : (LAX.stf_MD rf t s).nt = (0 : α) := rfl
+
+-- --- UMP capitalization conserves value -----------------------------------
+
+/-- **UMP capitalization is value-conserving.**  An `IPCI` event grows the
+    notional by the interest accrued over the period and resets the accrual; no
+    cash leaves the contract (`pof = 0`). -/
+theorem ump_ipci_value (t : Time) (s : State α) :
+    (UMP.stf_IPCI rf t s).nt = s.nt + s.nt * s.ipnr * rf.yf s.sd t
+    ∧ (UMP.stf_IPCI rf t s).ipac = 0 := ⟨rfl, rfl⟩
+
+-- --- Tier C (over ℝ): quantitative bounds for SWPPV and UMP ----------------
+
+/-- **Rate cap/floor bound (SWPPV).**  After a floating-rate reset the rate lies
+    within the life floor/cap window `[lifeFloor, lifeCap]` (both present and
+    well-ordered).  The swap analogue of `pam_rr_rate_mem`; a theorem over `ℝ`. -/
+theorem swppv_rr_rate_mem (ct : Terms ℝ) (rf : RiskFactorEnv ℝ) (t : Time) (s : State ℝ)
+    {lf lc : ℝ} (hf : ct.lifeFloor = some lf) (hc : ct.lifeCap = some lc) (h : lf ≤ lc) :
+    lf ≤ (SWPPV.stf_RR ct rf t s).ipnr ∧ (SWPPV.stf_RR ct rf t s).ipnr ≤ lc := by
+  simp only [SWPPV.stf_RR, clampHi, clampLo, hf, hc]
+  exact clamp_mem lf lc _ h
+
+/-- **Swap leg netting (kernel-level).**  A period's fixed leg `pof_IPFX` and
+    floating leg `pof_IPFL` sum to `N·(fixedRate − floatRate)·Y` — exactly the
+    single cash flow the `deliverySettlement = "S"` fold produces from the two
+    gross legs.  Now stated on the *actual* `SWPPV.pof_*`, not abstract terms. -/
+theorem swppv_pof_net (ct : Terms ℝ) (rf : RiskFactorEnv ℝ) (t : Time) (s : State ℝ) :
+    SWPPV.pof_IPFX ct rf t s + SWPPV.pof_IPFL rf t s
+      = s.nt * (Terms.ipnr ct - s.ipnr) * rf.yf s.sd t := by
+  simp only [SWPPV.pof_IPFX, SWPPV.pof_IPFL]; ring
+
+/-- **UMP compounding never shrinks the deposit.**  With a non-negative notional,
+    rate and year fraction, an `IPCI` capitalization leaves the notional no
+    smaller (interest only ever adds to a positive-rate deposit). Over `ℝ`. -/
+theorem ump_ipci_nondecr (rf : RiskFactorEnv ℝ) (t : Time) (s : State ℝ)
+    (hnt : 0 ≤ s.nt) (hr : 0 ≤ s.ipnr) (hy : 0 ≤ rf.yf s.sd t) :
+    s.nt ≤ (UMP.stf_IPCI rf t s).nt := by
+  simp only [UMP.stf_IPCI]
+  exact le_add_of_nonneg_right (mul_nonneg (mul_nonneg hnt hr) hy)
+
+-- --- SWPPV float-rate locality (generic) ----------------------------------
+
+/-- **Only a rate reset moves the floating rate.**  Every non-`RR` SWPPV event
+    (the two legs, clock ticks) leaves `Ipnr` untouched; the floating rate is
+    changed exclusively by `RR`. -/
+theorem swppv_ipnr_only_rr (e : EventType) (t : Time) (s : State α) (h : e ≠ .RR) :
+    (SWPPV.stf ct rf e t s).ipnr = s.ipnr := by
+  cases e <;> first | rfl | exact absurd rfl h
+
+-- --- SWPPV par / leg symmetry (over ℝ) ------------------------------------
+
+/-- **At par the legs cancel.**  When the fixed and floating rates coincide
+    (`fixedRate = Ipnr`), the fixed leg is exactly the negation of the floating
+    leg — so the two legs are sign-opposite. -/
+theorem swppv_legs_opposite (ct : Terms ℝ) (rf : RiskFactorEnv ℝ) (t : Time) (s : State ℝ)
+    (h : Terms.ipnr ct = s.ipnr) :
+    SWPPV.pof_IPFX ct rf t s = - SWPPV.pof_IPFL rf t s := by
+  simp only [SWPPV.pof_IPFX, SWPPV.pof_IPFL, h]; ring
+
+/-- **At par the net settlement is zero.**  Hence the `deliverySettlement = "S"`
+    netted period flow vanishes when the swap is at par. -/
+theorem swppv_par_net_zero (ct : Terms ℝ) (rf : RiskFactorEnv ℝ) (t : Time) (s : State ℝ)
+    (h : Terms.ipnr ct = s.ipnr) :
+    SWPPV.pof_IPFX ct rf t s + SWPPV.pof_IPFL rf t s = 0 := by
+  rw [swppv_pof_net, h]; ring
+
+-- --- UMP compound-growth closed form (over ℝ) -----------------------------
+
+/-- A **capitalization trace**: zero or more `IPCI` steps (each admissible,
+    `Sd ≤ t`).  Lives in `Type` so the multiplicative growth factor below can be
+    extracted from it. -/
+inductive IPCITrace (rf : RiskFactorEnv ℝ) : State ℝ → State ℝ → Type
+  | refl {s : State ℝ} : IPCITrace rf s s
+  | step {s : State ℝ} {t : Time} {s' : State ℝ} (ht : s.sd ≤ t)
+      (rest : IPCITrace rf (UMP.stf_IPCI rf t s) s') : IPCITrace rf s s'
+
+/-- The compound growth factor `∏ᵢ (1 + rateᵢ·Yᵢ)` accumulated along a
+    capitalization trace (`rateᵢ`/`Yᵢ` read from the running state at step `i`). -/
+noncomputable def ipciFactor (rf : RiskFactorEnv ℝ) :
+    ∀ {s s' : State ℝ}, IPCITrace rf s s' → ℝ
+  | _, _, .refl              => 1
+  | s, _, .step (t := t) _ rest => (1 + s.ipnr * rf.yf s.sd t) * ipciFactor rf rest
+
+/-- **The nominal rate is constant under capitalization.**  `IPCI` never touches
+    `Ipnr`, so it is the same throughout the trace — justifying the single
+    `rate` in the closed form below. -/
+theorem ipciTrace_ipnr (rf : RiskFactorEnv ℝ) {s s' : State ℝ} (tr : IPCITrace rf s s') :
+    s'.ipnr = s.ipnr := by
+  induction tr with
+  | refl => rfl
+  | @step s t s' ht rest ih => rw [ih]; rfl
+
+/-- **UMP compound-growth closed form.**  After a capitalization trace the
+    notional is the initial notional times the product of the per-period growth
+    factors: `Nt' = Nt₀ · ∏ᵢ (1 + rate·Yᵢ)`.  Proved by induction on the trace —
+    each `IPCI` multiplies the notional by its `(1 + rate·Y)` factor. -/
+theorem ump_ipci_closed_form (rf : RiskFactorEnv ℝ) {s s' : State ℝ} (tr : IPCITrace rf s s') :
+    s'.nt = s.nt * ipciFactor rf tr := by
+  induction tr with
+  | refl => simp [ipciFactor]
+  | @step s t s' ht rest ih =>
+      rw [ih]
+      simp only [ipciFactor, UMP.stf_IPCI]
+      ring
+
+-- --- LAX amortization: monotone notional under DEC redemptions (over ℝ) ----
+
+/-- A single LAX redemption with a non-negative instalment, on the long
+    (`sign ≥ 0`) side, does not increase the notional.  Unlike LAM's capped
+    `redeemed`, `STF_PR_LAX` subtracts the raw (signed) instalment, so this is a
+    one-sided (monotone) bound rather than a `[0, Nt]` window. -/
+theorem lax_pr_nt_le (ct : Terms ℝ) (rf : RiskFactorEnv ℝ) (x : ℝ) (t : Time) (s : State ℝ)
+    (hx : 0 ≤ x) (hsign : (0 : ℝ) ≤ sign (Terms.cntrl ct)) :
+    (LAX.stf_PR ct rf x t s).nt ≤ s.nt := by
+  show s.nt - sign (Terms.cntrl ct) * x ≤ s.nt
+  exact sub_le_self s.nt (mul_nonneg hsign hx)
+
+/-- A **redemption (`PR`) trace** for LAX: zero or more `DEC` redemptions, each
+    with a non-negative instalment `x` at an admissible time. -/
+inductive LAXPRTrace (ct : Terms ℝ) (rf : RiskFactorEnv ℝ) : State ℝ → State ℝ → Prop
+  | refl {s : State ℝ} : LAXPRTrace ct rf s s
+  | step {s : State ℝ} {x : ℝ} {t : Time} {s' : State ℝ} (hx : 0 ≤ x) (ht : s.sd ≤ t)
+      (rest : LAXPRTrace ct rf (LAX.stf_PR ct rf x t s) s') : LAXPRTrace ct rf s s'
+
+/-- **Monotone amortization.**  Along a whole LAX redemption trace, the notional
+    never increases: `Nt' ≤ Nt₀` (the long-side, non-negative-instalment case).
+    Proved by induction from the single-step bound `lax_pr_nt_le`. -/
+theorem laxPRTrace_nt_le {ct : Terms ℝ} {rf : RiskFactorEnv ℝ} {s s' : State ℝ}
+    (h : LAXPRTrace ct rf s s') (hsign : (0 : ℝ) ≤ sign (Terms.cntrl ct)) : s'.nt ≤ s.nt := by
+  induction h with
+  | refl => exact le_rfl
+  | @step s x t s' hx ht rest ih => exact le_trans ih (lax_pr_nt_le ct rf x t s hx hsign)
+
+/-- A `LAXPRTrace` is a genuine `LAX` execution trace (each step is the `LAX.Step`
+    for event `.PR` with payload `x`), so the bound above is about real
+    executions, not a separate toy relation. -/
+theorem laxPRTrace_isTrace {ct : Terms ℝ} {rf : RiskFactorEnv ℝ} {s s' : State ℝ}
+    (h : LAXPRTrace ct rf s s') : Nonempty (LAX.Trace ct rf s s') := by
+  induction h with
+  | refl => exact ⟨.refl⟩
+  | @step s x t s' hx ht rest ih =>
+      obtain ⟨tr⟩ := ih
+      exact ⟨.step (LAX.Step.ev .PR x ht) tr⟩
+
 end Actus.Contract.Properties
